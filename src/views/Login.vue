@@ -267,7 +267,7 @@ const checkUserExists = async (googleUser) => {
 <style scoped>
 .login-container {
   min-height: 100vh;
-  background-color: var(--dark-bg);
+  background-color: invisible;
   position: relative;
   padding: 3rem 1rem;
   overflow: hidden;
@@ -408,8 +408,8 @@ const checkUserExists = async (googleUser) => {
   height: 200%;
   background: radial-gradient(
     circle,
-    var(--button-glow-bg) 0%,
-    var(--button-glow-fade) 70%
+    var(--glow-bg) 0%,
+    var(--glow-fade) 70%
   );
   opacity: 0;
   z-index: -1;

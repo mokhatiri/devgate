@@ -1,0 +1,79 @@
+import { db } from "./firebase";
+import { ref as vueRef } from 'vue';
+import { doc, onSnapshot, collection, query, onSnapshot as onCollectionSnapshot } from "firebase/firestore";
+
+/** 
+ * Reactive single account info (by userId)
+ */
+export function getAccountInfo(userId) {
+    const accountInfo = vueRef(null);
+
+    const accountInfoRef = doc(db, "accounts", userId);
+    const unsubscribe = onSnapshot(accountInfoRef, (docSnap) => {
+        if (docSnap.exists()) {
+            accountInfo.value = { id: docSnap.id, ...docSnap.data() };
+        } else {
+            accountInfo.value = null;
+        }
+    });
+
+    return { accountInfo, unsubscribe };
+}
+
+/**
+ * examplaire use:
+    import { onUnmounted } from 'vue';
+
+    const { accountInfo, unsubscribe } = getAccountInfo('user123');
+
+    onUnmounted(() => {
+    unsubscribe();
+    });
+ */
+
+
+/** 
+ * Reactive multiple accounts info (by conditions)
+ */
+export function getAccountsInfoBy(object) {
+    const filteredAccounts = vueRef([]);
+
+    const accountInfoRef = collection(db, "accounts");
+
+    const unsubscribe = onCollectionSnapshot(accountInfoRef, (querySnapshot) => {
+        const accounts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        filteredAccounts.value = accounts.filter(account =>
+            Object.entries(object).every(([key, value]) => {
+                if (Array.isArray(value)) {
+                    return value.includes(account[key]);
+                } else {
+                    return account[key] === value;
+                }
+            })
+        );
+    });
+
+    return { filteredAccounts, unsubscribe };
+}
+
+/**
+ * examplaire use:
+    import { getAccountInfoBy } from './your-file';
+    import { onUnmounted } from 'vue';
+
+    // Suppose you want to find all users whose name is "John" OR "Youssef" and whose age is 25
+    const { filteredAccounts, unsubscribe } = getAccountInfoBy({
+        name: ["John", "Youssef"],
+        age: 25
+    });
+
+    // Now, `filteredAccounts` is a ref that will automatically update when Firestore changes
+
+    console.log(filteredAccounts.value); // initial value
+
+    // When the component is destroyed, you should unsubscribe
+    onUnmounted(() => {
+    unsubscribe();
+    });
+ */

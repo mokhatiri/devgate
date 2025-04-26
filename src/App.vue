@@ -1,17 +1,27 @@
 <template>
   <div>
+    <SideBar v-if="!isAuthPage" />
     <button
       @click="toggleTheme"
       class="btn btn-sm btn-outline-secondary position-fixed top-0 end-0 m-3 z-3"
     >
       Toggle {{ theme === "dark" ? "Light" : "Dark" }} Mode
     </button>
-    <router-view />
+    <router-view :style="!isAuthPage ? 'margin-left: 80px; width: Calc(100% - 80px)' : ''" />
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
+import SideBar from "./components/SideBar.vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
+
+// Pages where sidebar should be hidden
+const authPages = ["/login", "/signup", "/forgotpassword"];
+
+const isAuthPage = computed(() => authPages.includes(route.path.toLowerCase()));
 
 const theme = ref(
   localStorage.getItem("theme") ||
@@ -41,8 +51,8 @@ const applyTheme = () => {
     "--input-focus-bg": "#222222", // new
     "--input-focus-shadow": "#ff38b840", // new (semi-transparent pink)
     "--input-placeholder-color": "#888888", // new
-    "--button-glow-bg": "#ff38b8",
-    "--button-glow-fade": "#ff38b8",
+    "--glow-bg": "#ff38b8",
+    "--glow-fade": "#ff38b8",
     "--verify-alert-bg": "#4444ff",
     "--verify-alert-border": "#6464ff",
     "--strength-meter-bg": "#555555",
@@ -79,8 +89,8 @@ const applyTheme = () => {
     "--input-focus-bg": "#ffffff", // new
     "--input-focus-shadow": "#ff38b840", // new (semi-transparent pink)
     "--input-placeholder-color": "#aaaaaa", // new
-    "--button-glow-bg": "#ff38b8",
-    "--button-glow-fade": "#ff38b8",
+    "--glow-bg": "#ff38b8",
+    "--glow-fade": "#ff38b8",
     "--verify-alert-bg": "#6666ff",
     "--verify-alert-border": "#6464ff",
     "--strength-meter-bg": "#dddddd",

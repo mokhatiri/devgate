@@ -25,10 +25,10 @@
             <p class="text-center text-muted mb-5">
               Already have an account?
               <router-link
-                to="/signin"
+                to="/login"
                 class="text-decoration-none text-accent fw-semibold"
               >
-                Sign in here
+                Log in here
               </router-link>
             </p>
 
@@ -659,7 +659,7 @@ const signUpWithGoogle = async () => {
 <style scoped>
 .signup-container {
   min-height: 100vh;
-  background-color: var(--dark-bg);
+  background-color: invisible;
   position: relative;
   padding: 3rem 1rem;
   overflow: hidden;
@@ -822,8 +822,8 @@ const signUpWithGoogle = async () => {
   height: 200%;
   background: radial-gradient(
     circle,
-    var(--button-glow-bg) 0%,
-    var(--button-glow-fade) 70%
+    var(--glow-bg) 0%,
+    var(--glow-fade) 70%
   );
   opacity: 0;
   z-index: -1;

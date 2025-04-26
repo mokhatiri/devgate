@@ -1,8 +1,8 @@
 
 import { initializeApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getDatabase, ref, onValue, set, serverTimestamp, onDisconnect } from 'firebase/database';
+import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
+import { getDatabase, ref, onValue, set, serverTimestamp, onDisconnect, off} from 'firebase/database';
 import { ref as vueRef, onUnmounted } from 'vue';
 
 const firebaseConfig = {
@@ -58,7 +58,7 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // Function to check user presence
-export function useUserPresence(otherUserId) {
+function useUserPresence(otherUserId) {
   const isOnline = vueRef(false);
   const userStatusRef = ref(rtdb, 'status/' + otherUserId);
 
@@ -76,10 +76,43 @@ export function useUserPresence(otherUserId) {
 
   // Cleanup when the component is unmounted
   onUnmounted(() => {
-    userStatusRef.off('value', callback);
+    off(userStatusRef);
   });
 
   return isOnline;
 }
 
-export { auth, db, rtdb };
+const CurrUser = vueRef({}); // GLOBAL reactive object
+// ====> an object with all current user info, reactive, and is onSnapshot
+
+// Start listening immediately
+let unsubscribe = null;
+
+function startListeningToCurrentUser() {
+  if (unsubscribe) return; // already listening
+
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      const userDocRef = doc(db, 'users', user.uid);
+
+      unsubscribe = onSnapshot(userDocRef, (snapshot) => {
+        if (snapshot.exists()) {
+          CurrUser.value = snapshot.data();
+        } else {
+          CurrUser.value = {}; // no data
+        }
+      });
+    } else {
+      CurrUser.value = {}; // signed out
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe();
+        unsubscribe = null;
+      }
+    }
+  });
+}
+
+startListeningToCurrentUser();
+
+export { auth, db, rtdb, CurrUser, useUserPresence};

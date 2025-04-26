@@ -25,7 +25,7 @@
               <p class="text-center text-muted mb-5">
                 Remembered your password? 
                 <router-link
-                  to="/signin"
+                  to="/login"
                   class="text-decoration-none text-accent fw-semibold"
                 >
                   Sign in here
@@ -119,7 +119,7 @@
   
     try {
       await sendPasswordResetEmail(auth, form.value.email);
-      router.push("/signin");
+      router.push("/login");
     } catch (error) {
       console.error("Reset Password Error:", error.message);
   
@@ -281,8 +281,8 @@
     height: 200%;
     background: radial-gradient(
       circle,
-      var(--button-glow-bg) 0%,
-      var(--button-glow-fade) 70%
+      var(--glow-bg) 0%,
+      var(--glow-fade) 70%
     );
     opacity: 0;
     z-index: -1;
