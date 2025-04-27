@@ -2,11 +2,6 @@
   <div class="hacker-terminal">
     <!-- Terminal Header -->
     <div class="terminal-header">
-      <div class="terminal-controls">
-        <span class="terminal-button close"></span>
-        <span class="terminal-button minimize"></span>
-        <span class="terminal-button maximize"></span>
-      </div>
       <div class="terminal-title">TERMINAL_CHAT - MULTI-WINDOW MODE</div>
       <div class="terminal-actions">
         <button class="terminal-btn-sm" @click="toggleSidebar">
@@ -49,6 +44,7 @@
                   active: activeChats.some(
                     (chat) => !chat.isGroup && chat.entity.id === user.id
                   ),
+                  'has-unread': hasUnreadMessagesForEntity(user.id, false)
                 }"
               >
                 <div class="d-flex align-items-center">
@@ -60,9 +56,12 @@
                   <div class="terminal-user-info">
                     <div class="terminal-username">{{ user.name }}</div>
                     <div class="terminal-user-handle">@{{ user.username }}</div>
+                    <OnlineDot :user="user" />
                   </div>
                 </div>
-                <OnlineDot :user="user" />
+                <div class="status-indicators">
+                  <div v-if="hasUnreadMessagesForEntity(user.id, false)" class="unread-indicator">!</div>
+                </div>
               </li>
             </ul>
           </div>
@@ -79,6 +78,7 @@
                   active: activeChats.some(
                     (chat) => chat.isGroup && chat.entity.id === group.id
                   ),
+                  'has-unread': hasUnreadMessagesForEntity(group.id, true)
                 }"
               >
                 <div class="d-flex align-items-center">
@@ -91,6 +91,7 @@
                     <div class="terminal-username">{{ group.name }}</div>
                   </div>
                 </div>
+                <div v-if="hasUnreadMessagesForEntity(group.id, true)" class="unread-indicator">!</div>
               </li>
             </ul>
           </div>
@@ -107,6 +108,7 @@
           :class="{
             minimized: chat.minimized,
             focused: focusedChatIndex === index,
+            'has-new-message': unreadMessages[getUnreadKey(chat)]?.length > 0
           }"
           :style="chat.position"
           @click="setFocusedChat(index)"
@@ -123,14 +125,17 @@
               />
               <div class="chat-window-title">
                 {{ chat.isGroup ? chat.entity.name : chat.entity.name }}
+                <span v-if="unreadMessages[getUnreadKey(chat)]?.length > 0" class="unread-count">
+                  ({{ unreadMessages[getUnreadKey(chat)].length }})
+                </span>
               </div>
-              <div style="margin-left : 10px">
-              <button
-                class="window-control only"
-                @click.stop="keepOnlyThisWindow(index)"
-              >
-                [ONLY]
-              </button>
+              <div style="margin-left: 10px">
+                <button
+                  class="window-control only"
+                  @click.stop="keepOnlyThisWindow(index)"
+                >
+                  [ONLY]
+                </button>
               </div>
             </div>
             <div>
@@ -143,7 +148,9 @@
           </div>
           <!-- Chat Window Content -->
           <div class="chat-window-content" v-show="!chat.minimized">
-            <div class="chat-messages">
+            <div class="chat-messages"
+              :ref="'chatMessages-' + index"
+            >
               <div
                 v-for="message in chat.messages"
                 :key="message.id"
@@ -161,7 +168,67 @@
                 </div>
                 <div class="message-command">
                   <span class="command-prompt">$</span>
-                  <span class="command-text">{{ message.text }}</span>
+                  <span v-if="editingMessageId === message.id">
+                    <input
+                      v-model="editingMessageText"
+                      class="edit-message-input"
+                      @keyup.enter="saveEditedMessage(chat, message)"
+                      @blur="cancelEditing()"
+                    />
+                  </span>
+                  <span v-else-if="message.imageUrl">
+                    <img
+                      :src="message.imageUrl"
+                      class="message-image"
+                      @click.stop="viewImage(message.imageUrl)"
+                    />
+                  </span>
+                  <span v-else class="command-text">{{ message.text }}</span>
+                </div>
+                <div class="message-timestamp">
+                  [{{ formatTimestamp(message.createdAt) }}]
+                </div>
+                <div v-if="message.senderId === currUserId" class="message-actions">
+                  <button class="message-action-btn" @click="startEditingMessage(message)">
+                    ✎
+                  </button>
+                  <button class="message-action-btn" @click="deleteMessage(chat, message)">
+                    🗑
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Unread messages divider -->
+              <div v-if="unreadMessages[getUnreadKey(chat)]?.length > 0" class="unread-messages-divider">
+                <span>---- NEW MESSAGES ({{ unreadMessages[getUnreadKey(chat)].length }}) ----</span>
+              </div>
+              
+              <!-- Show unread messages after the divider -->
+              <div
+                v-for="message in unreadMessages[getUnreadKey(chat)]"
+                :key="message.id"
+                class="terminal-message unread-message"
+                :class="{ 'user-message': message.senderId === currUserId }"
+              >
+                <div class="message-user-info">
+                  <img
+                    :src="getUserAvatar(message.senderId, chat)"
+                    class="message-avatar"
+                  />
+                  <span class="message-username">{{
+                    getUserName(message.senderId, chat)
+                  }}</span>
+                </div>
+                <div class="message-command">
+                  <span class="command-prompt">$</span>
+                  <span v-if="message.imageUrl">
+                    <img
+                      :src="message.imageUrl"
+                      class="message-image"
+                      @click.stop="viewImage(message.imageUrl)"
+                    />
+                  </span>
+                  <span v-else class="command-text">{{ message.text }}</span>
                 </div>
                 <div class="message-timestamp">
                   [{{ formatTimestamp(message.createdAt) }}]
@@ -172,7 +239,7 @@
             <!-- Chat Input -->
             <form @submit.prevent="sendMessage(index)" class="chat-input-form">
               <div class="input-prompt">
-                <span>@{{ chat.entity.username }}:~$</span>
+                <span>@{{ chat.entity.username || chat.entity.name }}:~$</span>
               </div>
               <input
                 v-model="chat.newMessage"
@@ -181,6 +248,17 @@
                 @focus="setFocusedChat(index)"
               />
               <button class="terminal-btn-sm" type="submit">[ SEND ]</button>
+
+              <!-- Styled Image Upload Button -->
+              <label class="image-upload-button">
+                [ UPLOAD IMAGE ]
+                <input
+                  type="file"
+                  accept="image/*"
+                  class="image-upload-input"
+                  @change="uploadImage($event, index)"
+                />
+              </label>
             </form>
           </div>
 
@@ -269,12 +347,17 @@
         </div>
       </div>
     </div>
+
+    <!-- Image Viewer Modal -->
+    <div v-if="imageViewer.visible" class="image-viewer-overlay" @click="closeImageViewer">
+      <img :src="imageViewer.imageUrl" class="image-viewer-image" />
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, onUnmounted, computed } from "vue";
-import { db } from "@/firebase";
+import { ref, onMounted, watch, onUnmounted, nextTick } from "vue";
+import { db, auth } from "@/firebase";
 import { getAccountsInfoBy } from "@/Functions";
 import {
   collection,
@@ -284,10 +367,16 @@ import {
   onSnapshot,
   deleteDoc,
   doc,
+  updateDoc,
+  where,
+  getDocs,
+  writeBatch,
+  getDoc,
+  setDoc
 } from "firebase/firestore";
-import { auth } from "@/firebase";
 import { Modal } from "bootstrap";
 import OnlineDot from "@/components/OnlineDot.vue";
+import { handleImageUpload, getImageUrl } from "@/cloudinary.js";
 
 // States
 const users = ref([]);
@@ -313,6 +402,44 @@ const resizeStart = ref({ x: 0, y: 0 });
 
 // User data cache
 const userCache = ref({});
+const lastReadTimestamps = ref({});
+
+// Image Viewer
+const imageViewer = ref({
+  visible: false,
+  imageUrl: "",
+});
+
+// Editing messages
+const editingMessageId = ref(null);
+const editingMessageText = ref("");
+
+// Unread messages - using an object with chat-specific keys
+const unreadMessages = ref({});
+
+// Global message listeners and all unread messages
+const globalMessageListeners = ref({});
+const allUnreadMessages = ref({});
+
+// Current chat type
+const currentChatType = ref({
+  isGroup: false,
+  chatId: null
+});
+
+// Get a unique key for each chat for tracking unread messages
+function getUnreadKey(chat) {
+  return chat.isGroup 
+    ? `group-${chat.entity.id}` 
+    : `user-${chat.entity.id}`;
+}
+
+// Check if there are unread messages for a specific entity
+function hasUnreadMessagesForEntity(entityId, isGroup) {
+  const key = isGroup ? `group-${entityId}` : `user-${entityId}`;
+  return (unreadMessages.value[key]?.length > 0) || 
+         (allUnreadMessages.value[key]?.length > 0);
+}
 
 onMounted(() => {
   // Fetch all users excluding the current user
@@ -327,6 +454,7 @@ onMounted(() => {
         userCache.value[user.id] = {
           name: user.name,
           photoURL: user.photoURL,
+          username: user.username
         };
       });
       // Add current user to cache
@@ -335,6 +463,7 @@ onMounted(() => {
         userCache.value[currUserId] = {
           name: currentUser.name,
           photoURL: currentUser.photoURL,
+          username: currentUser.username
         };
       }
     },
@@ -363,15 +492,17 @@ onMounted(() => {
 
   // Setup modal
   const groupModalElement = document.getElementById("groupModal");
-  const groupModal = new Modal(groupModalElement);
+  if (groupModalElement) {
+    const groupModal = new Modal(groupModalElement);
 
-  watch(showGroupModal, (newValue) => {
-    if (newValue) {
-      groupModal.show();
-    } else {
-      groupModal.hide();
-    }
-  });
+    watch(showGroupModal, (newValue) => {
+      if (newValue) {
+        groupModal.show();
+      } else {
+        groupModal.hide();
+      }
+    });
+  }
 
   // Window drag handlers
   document.addEventListener("mousemove", handleWindowDrag);
@@ -381,14 +512,98 @@ onMounted(() => {
   document.addEventListener("mousemove", handleWindowResize);
   document.addEventListener("mouseup", stopResizeWindow);
 
+  // Setup global message listeners
+  setupGlobalMessageListeners();
+
+  // Watch for changes in users and groups to update listeners
+  watch([() => users.value, () => userGroups.value], () => {
+    setupGlobalMessageListeners();
+  });
+
   // Clean up event listeners
   onUnmounted(() => {
     document.removeEventListener("mousemove", handleWindowDrag);
     document.removeEventListener("mouseup", stopWindowDrag);
     document.removeEventListener("mousemove", handleWindowResize);
     document.removeEventListener("mouseup", stopResizeWindow);
+
+    // Clean up global message listeners
+    Object.values(globalMessageListeners.value).forEach(unsubscribe => {
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    });
   });
+
+  
+  // Load saved timestamps from localStorage
+  const savedTimestamps = localStorage.getItem('lastReadTimestamps');
+  if (savedTimestamps) {
+    lastReadTimestamps.value = JSON.parse(savedTimestamps);
+  }
+
+  // Watch for changes to timestamps and save them
+  watch(lastReadTimestamps.value, (newVal) => {
+    localStorage.setItem('lastReadTimestamps', JSON.stringify(newVal));
+  }, { deep: true });
+
+
 });
+
+// Scroll to the last message, including unread messages
+function scrollToLastMessage(chatIndex) {
+  nextTick(() => {
+    // Only scroll if this is the focused chat
+    if (focusedChatIndex.value !== chatIndex) return;
+
+    const chatContainer = document.querySelector(`.chat-window:nth-child(${chatIndex + 1}) .chat-messages`);
+    if (chatContainer) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+  });
+}
+
+// Add a notification
+async function addNotification(chat, message, isGroup) {
+  const notification = {
+    chatId: isGroup ? chat.entity.id : [currUserId, chat.entity.id].sort().join("_"),
+    isGroup: isGroup,
+    senderId: currUserId,
+    text: message.text || "[IMAGE]",
+    createdAt: new Date(),
+  };
+
+  const userId = chat.isGroup ? null : chat.entity.id; // Notify the other user in private chats
+  if (userId) {
+    await addDoc(collection(db, "users", userId, "notifications"), notification);
+  }
+}
+
+// Fix the clearNotifications function
+async function clearNotifications(chat, isGroup) {
+  // Early return if chat is undefined
+  if (!chat) return;
+
+  const userId = chat.entity?.id;
+  // Early return if no valid user/group id
+  if (!userId) return;
+
+  const chatId = isGroup ? chat.entity.id : [currUserId, chat.entity.id].sort().join('_');
+  const notificationsQuery = query(
+    collection(db, "users", currUserId, "notifications"),
+    where("chatId", "==", chatId),
+    where("isGroup", "==", isGroup)
+  );
+
+  const snapshot = await getDocs(notificationsQuery);
+  const batch = writeBatch(db);
+
+  snapshot.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+
+  await batch.commit();
+}
 
 // Toggle chat window visibility
 function toggleChat(entity, isGroup) {
@@ -400,12 +615,11 @@ function toggleChat(entity, isGroup) {
   if (existingIndex !== -1) {
     // Chat is already open, focus it
     setFocusedChat(existingIndex);
-    // If minimized, maximize it
     if (activeChats.value[existingIndex].minimized) {
       activeChats.value[existingIndex].minimized = false;
     }
   } else {
-    // Open new chat window with default position
+    // Open new chat window
     const newChat = {
       entity: entity,
       isGroup: isGroup,
@@ -422,6 +636,13 @@ function toggleChat(entity, isGroup) {
       unsubscribe: null,
     };
 
+    // Move any unread messages to the chat
+    const key = isGroup ? `group-${entity.id}` : `user-${entity.id}`;
+    if (allUnreadMessages.value[key]?.length > 0) {
+      unreadMessages.value[key] = allUnreadMessages.value[key];
+      allUnreadMessages.value[key] = [];
+    }
+
     activeChats.value.push(newChat);
     const newChatIndex = activeChats.value.length - 1;
     setFocusedChat(newChatIndex);
@@ -435,25 +656,91 @@ function toggleChat(entity, isGroup) {
   }
 }
 
-// Load messages for a user chat
+// Handle new messages
+function handleNewMessages(chatIndex, messages) {
+  const chat = activeChats.value[chatIndex];
+  if (!chat) return;
+
+  const chatKey = getUnreadKey(chat);
+  const isCurrentlyFocused = focusedChatIndex.value === chatIndex && !chat.minimized;
+  const lastReadTime = lastReadTimestamps.value[chatKey] || new Date(0);
+
+  // Split messages into read and unread based on timestamp
+  const { readMessages, unreadMessages: newUnread } = messages.reduce(
+    (acc, msg) => {
+      const messageTime = msg.createdAt.toDate();
+      if (messageTime <= lastReadTime || msg.senderId === currUserId) {
+        acc.readMessages.push(msg);
+      } else {
+        acc.unreadMessages.push(msg);
+      }
+      return acc;
+    },
+    { readMessages: [], unreadMessages: [] }
+  );
+
+  // Update the chat messages
+  chat.messages = readMessages;
+  
+  // Update unread messages for this chat
+  if (newUnread.length > 0) {
+    unreadMessages.value[chatKey] = newUnread;
+  }
+
+  // If chat is focused, mark messages as read
+  if (isCurrentlyFocused) {
+    markMessagesAsRead(chat);
+  }
+
+  // Scroll if focused
+  if (isCurrentlyFocused) {
+    scrollToLastMessage(chatIndex);
+  }
+}
+
+async function markMessagesAsRead(chat) {
+  const chatKey = getUnreadKey(chat);
+  lastReadTimestamps.value[chatKey] = new Date();
+
+  await updateLastReadTime(chat);
+  // Move unread messages to read messages
+  if (unreadMessages.value[chatKey]?.length > 0) {
+    chat.messages = [...chat.messages, ...unreadMessages.value[chatKey]];
+    unreadMessages.value[chatKey] = [];
+  }
+}
+
+// Update loadUserMessages function
 function loadUserMessages(chatIndex) {
   const chat = activeChats.value[chatIndex];
   if (!chat || chat.isGroup) return;
 
   const chatId = [currUserId, chat.entity.id].sort().join("_");
+
+  const lastReadRef = doc(db, "chats", chatId, "lastRead", currUserId);
+  getDoc(lastReadRef).then(lastReadDoc => {
+    const lastRead = lastReadDoc.exists() 
+      ? lastReadDoc.data().timestamp?.toDate() 
+      : new Date(0);
+    
+    lastReadTimestamps.value[getUnreadKey(chat)] = lastRead;
+  });
+
   const q = query(
     collection(db, "chats", chatId, "messages"),
     orderBy("createdAt")
   );
 
   const unsubscribe = onSnapshot(q, (snapshot) => {
-    activeChats.value[chatIndex].messages = snapshot.docs.map((doc) => ({
+    const messages = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
+    handleNewMessages(chatIndex, messages);
   });
 
-  // Store unsubscribe function to clean up when closing the window
+  // Pass the chat object and isGroup flag
+  clearNotifications(chat, false);
   activeChats.value[chatIndex].unsubscribe = unsubscribe;
 }
 
@@ -463,19 +750,30 @@ function loadGroupMessages(chatIndex) {
   if (!chat || !chat.isGroup) return;
 
   const groupId = chat.entity.id;
+
+  const lastReadRef = doc(db, "groups", groupId, "lastRead", currUserId);
+  getDoc(lastReadRef).then(lastReadDoc => {
+    const lastRead = lastReadDoc.exists() 
+      ? lastReadDoc.data().timestamp?.toDate() 
+      : new Date(0);
+    
+    lastReadTimestamps.value[getUnreadKey(chat)] = lastRead;
+  });
+
   const q = query(
     collection(db, "groups", groupId, "messages"),
     orderBy("createdAt")
   );
 
   const unsubscribe = onSnapshot(q, (snapshot) => {
-    activeChats.value[chatIndex].messages = snapshot.docs.map((doc) => ({
+    const messages = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
+    handleNewMessages(chatIndex, messages);
   });
 
-  // Store unsubscribe function
+  clearNotifications(chat.entity.id, true);
   activeChats.value[chatIndex].unsubscribe = unsubscribe;
 }
 
@@ -484,31 +782,105 @@ async function sendMessage(chatIndex) {
   const chat = activeChats.value[chatIndex];
   if (!chat || !chat.newMessage.trim()) return;
 
+  // mark messages as read
+  await markMessagesAsRead(chat);
+
+  const message = {
+    text: chat.newMessage,
+    senderId: currUserId,
+    createdAt: new Date(),
+  };
+
   if (!chat.isGroup) {
     const chatId = [currUserId, chat.entity.id].sort().join("_");
-    await addDoc(collection(db, "chats", chatId, "messages"), {
-      text: chat.newMessage,
-      senderId: currUserId,
-      receiverId: chat.entity.id,
-      createdAt: new Date(),
-    });
+    await addDoc(collection(db, "chats", chatId, "messages"), message);
+    await addNotification(chat, message, false);
   } else {
     const groupId = chat.entity.id;
-    await addDoc(collection(db, "groups", groupId, "messages"), {
-      text: chat.newMessage,
-      senderId: currUserId,
-      createdAt: new Date(),
-    });
+    await addDoc(collection(db, "groups", groupId, "messages"), message);
+    await addNotification(chat, message, true);
   }
 
+  // Add a notification for the message
+
+  // Clear the input field
   activeChats.value[chatIndex].newMessage = "";
+
+  // Scroll to the last message
+  nextTick(() => scrollToLastMessage(chatIndex));
+}
+
+// Upload image in chat
+async function uploadImage(event, chatIndex) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    // Upload the image to Cloudinary
+    const publicId = await handleImageUpload(file);
+
+    // Generate the image URL
+    const imageUrl = getImageUrl(publicId);
+
+    // Send the image URL as a message
+    const chat = activeChats.value[chatIndex];
+    if (!chat) return;
+
+    if (!chat.isGroup) {
+      const chatId = [currUserId, chat.entity.id].sort().join("_");
+      await addDoc(collection(db, "chats", chatId, "messages"), {
+        text: "[IMAGE]",
+        imageUrl: imageUrl,
+        senderId: currUserId,
+        receiverId: chat.entity.id,
+        createdAt: new Date(),
+      });
+    } else {
+      const groupId = chat.entity.id;
+      await addDoc(collection(db, "groups", groupId, "messages"), {
+        text: "[IMAGE]",
+        imageUrl: imageUrl,
+        senderId: currUserId,
+        createdAt: new Date(),
+      });
+    }
+  } catch (error) {
+    console.error("Error uploading image:", error);
+  }
+}
+
+// Open the image viewer
+function viewImage(imageUrl) {
+  imageViewer.value = {
+    visible: true,
+    imageUrl,
+  };
+}
+
+// Close the image viewer
+function closeImageViewer() {
+  imageViewer.value = {
+    visible: false,
+    imageUrl: "",
+  };
 }
 
 // Close chat window
 function closeChat(index) {
+  const chat = activeChats.value[index];
+  if (!chat) return;
+  
   // Clean up listeners
-  if (activeChats.value[index].unsubscribe) {
-    activeChats.value[index].unsubscribe();
+  if (chat.unsubscribe) {
+    chat.unsubscribe();
+  }
+
+  // Reset current chat type if closing the focused chat
+  if (focusedChatIndex.value === index) {
+    currentChatType.value = {
+      isGroup: false,
+      chatId: null
+    };
   }
 
   // Remove the chat
@@ -516,8 +888,17 @@ function closeChat(index) {
 
   // Update focused chat if needed
   if (focusedChatIndex.value === index) {
-    focusedChatIndex.value =
-      activeChats.value.length > 0 ? activeChats.value.length - 1 : -1;
+    focusedChatIndex.value = activeChats.value.length > 0 ? activeChats.value.length - 1 : -1;
+    // Update current chat type for new focused chat
+    if (focusedChatIndex.value !== -1) {
+      const newFocusedChat = activeChats.value[focusedChatIndex.value];
+      currentChatType.value = {
+        isGroup: newFocusedChat.isGroup,
+        chatId: newFocusedChat.isGroup 
+          ? newFocusedChat.entity.id 
+          : [currUserId, newFocusedChat.entity.id].sort().join('_')
+      };
+    }
   } else if (focusedChatIndex.value > index) {
     focusedChatIndex.value--;
   }
@@ -540,7 +921,7 @@ function keepOnlyThisWindow(index) {
   // Update the focused chat index
   focusedChatIndex.value = 0;
 
-  resizeWindow(index);
+  resizeWindow(0);
 }
 
 // Window management functions
@@ -622,9 +1003,21 @@ function stopResizeWindow() {
   resizedWindowIndex.value = -1;
 }
 
-function setFocusedChat(index) {
+async function setFocusedChat(index) {
   if (focusedChatIndex.value !== index) {
     focusedChatIndex.value = index;
+    
+    const chat = activeChats.value[index];
+    if (chat) {
+      // Update current chat type
+      currentChatType.value = {
+        isGroup: chat.isGroup,
+        chatId: chat.isGroup ? chat.entity.id : [currUserId, chat.entity.id].sort().join('_')
+      };
+
+      await updateLastReadTime(chat);
+      await clearNotifications(chat, chat.isGroup);
+    }
 
     // Move focused window to top (highest z-index)
     const highestZ = Math.max(
@@ -632,7 +1025,28 @@ function setFocusedChat(index) {
     );
 
     activeChats.value[index].position.zIndex = highestZ + 1;
+    scrollToLastMessage(index);
   }
+}
+
+// Update updateLastReadTime function
+async function updateLastReadTime(chat) {
+  if (!chat) return;
+
+  const chatId = chat.isGroup 
+    ? chat.entity.id 
+    : [currUserId, chat.entity.id].sort().join('_');
+  
+  const collectionPath = chat.isGroup ? 'groups' : 'chats';
+  const lastReadRef = doc(db, collectionPath, chatId, 'lastRead', currUserId);
+
+  await setDoc(lastReadRef, {
+    timestamp: new Date(),
+    userId: currUserId
+  });
+
+  // Pass both parameters to clearNotifications
+  await clearNotifications(chat, chat.isGroup);
 }
 
 function toggleMinimize(index) {
@@ -771,6 +1185,133 @@ async function createGroup() {
 
   Modal.getInstance(document.getElementById("groupModal")).hide();
 }
+
+// Edit message functions
+function startEditingMessage(message) {
+  editingMessageId.value = message.id;
+  editingMessageText.value = message.text;
+}
+
+function cancelEditing() {
+  editingMessageId.value = null;
+  editingMessageText.value = "";
+}
+
+async function saveEditedMessage(chat, message) {
+  if (!editingMessageText.value.trim()) return;
+
+  const messageRef = doc(
+    db,
+    chat.isGroup ? "groups" : "chats",
+    chat.isGroup ? chat.entity.id : [currUserId, chat.entity.id].sort().join("_"),
+    "messages",
+    message.id
+  );
+
+  await updateDoc(messageRef, { text: editingMessageText.value });
+
+  cancelEditing();
+}
+
+async function deleteMessage(chat, message) {
+  const messageRef = doc(
+    db,
+    chat.isGroup ? "groups" : "chats",
+    chat.isGroup ? chat.entity.id : [currUserId, chat.entity.id].sort().join("_"),
+    "messages",
+    message.id
+  );
+
+  await deleteDoc(messageRef);
+}
+
+// Add this near your other watch effects
+watch(() => activeChats.value.map(chat => chat.messages), (newVal, oldVal) => {
+  const changedIndex = newVal.findIndex((messages, index) => 
+    messages.length !== (oldVal?.[index]?.length || 0)
+  );
+  
+  if (changedIndex !== -1) {
+    scrollToLastMessage(changedIndex);
+  }
+}, { deep: true });
+
+// Setup global message listeners
+function setupGlobalMessageListeners() {
+  // Listen to all user chats
+  users.value.forEach(user => {
+    const chatId = [currUserId, user.id].sort().join('_');
+    if (!globalMessageListeners.value[chatId]) {
+      const q = query(
+        collection(db, "chats", chatId, "messages"),
+        orderBy("createdAt")
+      );
+
+      globalMessageListeners.value[chatId] = onSnapshot(q, (snapshot) => {
+        const newMessages = snapshot.docChanges()
+          .filter(change => change.type === 'added')
+          .map(change => ({
+            id: change.doc.id,
+            ...change.doc.data()
+          }))
+          .filter(msg => msg.senderId !== currUserId);
+
+        if (newMessages.length > 0) {
+          // Check if this chat is currently open
+          const isOpen = activeChats.value.some(
+            chat => !chat.isGroup && chat.entity.id === user.id
+          );
+
+          if (!isOpen) {
+            // Add to unread messages
+            const key = `user-${user.id}`;
+            allUnreadMessages.value[key] = [
+              ...(allUnreadMessages.value[key] || []),
+              ...newMessages
+            ];
+          }
+        }
+      });
+    }
+  });
+
+  // Listen to all group chats
+  userGroups.value.forEach(group => {
+    const groupId = group.id;
+    if (!globalMessageListeners.value[groupId]) {
+      const q = query(
+        collection(db, "groups", groupId, "messages"),
+        orderBy("createdAt")
+      );
+
+      globalMessageListeners.value[groupId] = onSnapshot(q, (snapshot) => {
+        const newMessages = snapshot.docChanges()
+          .filter(change => change.type === 'added')
+          .map(change => ({
+            id: change.doc.id,
+            ...change.doc.data()
+          }))
+          .filter(msg => msg.senderId !== currUserId);
+
+        if (newMessages.length > 0) {
+          // Check if this group chat is currently open
+          const isOpen = activeChats.value.some(
+            chat => chat.isGroup && chat.entity.id === groupId
+          );
+
+          if (!isOpen) {
+            // Add to unread messages
+            const key = `group-${groupId}`;
+            allUnreadMessages.value[key] = [
+              ...(allUnreadMessages.value[key] || []),
+              ...newMessages
+            ];
+          }
+        }
+      });
+    }
+  });
+}
 </script>
 
 <style scoped>
@@ -799,25 +1340,6 @@ async function createGroup() {
 .terminal-controls {
   display: flex;
   gap: 8px;
-}
-
-.terminal-button {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.terminal-button.close {
-  background-color: #ff5f56;
-}
-
-.terminal-button.minimize {
-  background-color: #ffbd2e;
-}
-
-.terminal-button.maximize {
-  background-color: #27c93f;
 }
 
 .terminal-title {
@@ -887,6 +1409,20 @@ async function createGroup() {
   border-radius: 4px;
 }
 
+/* Add this new style for the user info container */
+.terminal-user-info {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+/* Add this style for the d-flex container */
+.d-flex.align-items-center {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
 .terminal-list-item:hover {
   background: var(--button-bg);
   border-color: var(--accent-color);
@@ -945,6 +1481,16 @@ async function createGroup() {
 .chat-window.minimized {
   height: 40px !important;
   overflow: hidden;
+}
+
+@keyframes newMessage {
+  0% { border-color: var(--accent-color); }
+  50% { border-color: var(--accent-secondary); }
+  100% { border-color: var(--accent-color); }
+}
+
+.chat-window.has-new-message {
+  animation: newMessage 1s infinite;
 }
 
 .chat-window-header {
@@ -1018,6 +1564,7 @@ async function createGroup() {
   flex-direction: column;
   flex: 1;
   overflow: hidden;
+  padding: 10px; /* Add padding to prevent overflow */
 }
 
 .chat-messages {
@@ -1092,12 +1639,45 @@ async function createGroup() {
   margin-top: 2px;
 }
 
+.message-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 4px;
+  margin-top: 5px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.message-image:hover {
+  transform: scale(1.1);
+}
+
+.message-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.message-action-btn {
+  background: none;
+  border: none;
+  color: var(--accent-color);
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: color 0.2s;
+}
+
+.message-action-btn:hover {
+  color: var(--accent-secondary);
+}
+
 /* Chat Input */
 .chat-input-form {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 10px;
+  flex-wrap: wrap; /* Ensure inputs wrap if they don't fit */
 }
 
 .input-prompt {
@@ -1116,6 +1696,32 @@ async function createGroup() {
   color: var(--text-color);
   font-family: "Courier New", monospace;
   font-size: 0.9em;
+}
+
+/* Style for the image upload input */
+.image-upload-input {
+  display: none; /* Hide the default file input */
+}
+
+.image-upload-button {
+  background: var(--button-bg);
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  font-family: "Courier New", monospace;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap; /* Prevent text overflow */
+  max-width: 100%; /* Ensure it doesn't overflow the window */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.image-upload-button:hover {
+  background: var(--accent-color);
+  color: var(--dark-bg);
 }
 
 /* No Chats Message */
@@ -1263,4 +1869,49 @@ async function createGroup() {
   background: var(--accent-color);
   cursor: nwse-resize;
 }
+
+/* Image Viewer Overlay */
+.image-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  cursor: pointer;
+}
+
+/* Image Viewer Image */
+.image-viewer-image {
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+/* Edit Message Input */
+.edit-message-input {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--text-color);
+  font-family: "Courier New", monospace;
+  font-size: 0.9em;
+  width: 100%;
+}
+
+.unread-messages-divider {
+  text-align: center;
+  margin: 10px 0;
+  color: var(--accent-color);
+  border-bottom: 1px dashed var(--accent-color);
+  font-size: 0.8em;
+  padding: 5px 0;
+}
+
 </style>

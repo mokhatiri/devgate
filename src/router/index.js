@@ -33,6 +33,11 @@ const routes = [
   path: '/addcommunity',
   name: 'addcommunity',
   component: () => import('../views/AddCommunityView.vue')
+  },
+  {
+  path: '/chat',
+  name: 'chat',
+  component: () => import('../views/ChatView.vue')
   }
 
 ]
