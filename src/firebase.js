@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
 import { getDatabase, ref, onValue, set, serverTimestamp, onDisconnect, off} from 'firebase/database';
-import { ref as vueRef, onUnmounted } from 'vue';
+import { ref as vueRef, onUnmounted, onMounted } from 'vue';
 
 const firebaseConfig = {
     apiKey: "AIzaSyD06RdWmg7cNHnG6zevlxVESSmxgZMftf8",
@@ -67,18 +67,16 @@ function useUserPresence(otherUserId) {
     if (status !== null) {
       isOnline.value = status.state === 'online';
     } else {
-      isOnline.value = false; // Default to offline if no status
+      isOnline.value = false;
     }
   };
 
-  // Set up the listener
   onValue(userStatusRef, callback);
 
-  // Cleanup when the component is unmounted
   onUnmounted(() => {
-    off(userStatusRef);
+    off(userStatusRef, 'value', callback);
   });
-
+  
   return isOnline;
 }
 
@@ -97,7 +95,11 @@ function startListeningToCurrentUser() {
 
       unsubscribe = onSnapshot(userDocRef, (snapshot) => {
         if (snapshot.exists()) {
-          CurrUser.value = snapshot.data();
+          const userData = snapshot.data();
+          CurrUser.value = {
+            ...userData,
+            photoURL: userData.photoURL || 'https://res.cloudinary.com/duwrqxvey/image/upload/v1745689776/default-avatar-icon-of-social-media-user-vector_zoyryv.jpg', // add default logo if missing
+          };
         } else {
           CurrUser.value = {}; // no data
         }

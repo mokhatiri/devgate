@@ -1,13 +1,16 @@
 <template>
   <div>
     <SideBar v-if="!isAuthPage" />
+    <router-view :style="!isAuthPage ? 'margin-left: 80px; width: Calc(100% - 80px)' : ''" />
+  
     <button
       @click="toggleTheme"
-      class="btn btn-sm btn-outline-secondary position-fixed top-0 end-0 m-3 z-3"
+      class="btn btn-sm position-fixed bottom-0"
+      style="z-index: 9999;"
     >
-      Toggle {{ theme === "dark" ? "Light" : "Dark" }} Mode
+      <i :class="theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill'"></i>
     </button>
-    <router-view :style="!isAuthPage ? 'margin-left: 80px; width: Calc(100% - 80px)' : ''" />
+
   </div>
 </template>
 
@@ -49,7 +52,7 @@ const applyTheme = () => {
     "--input-group-text-bg": "#333333",
     "--input-group-text-border": "#444444",
     "--input-focus-bg": "#222222", // new
-    "--input-focus-shadow": "#ff38b840", // new (semi-transparent pink)
+    "--input-focus-shadow": "#ff38b840", // new
     "--input-placeholder-color": "#888888", // new
     "--glow-bg": "#ff38b8",
     "--glow-fade": "#ff38b8",
@@ -69,6 +72,23 @@ const applyTheme = () => {
     "--navbar-text": "#f0f0f0",
     "--step-indicator-bg": "#2c2c2c", // new
     "--progress-line-bg": "#444444", // new
+    "--message-sent-bg": "#6464ff",        // keep it, fits dark mode too
+    "--message-received-bg": "#232323",    // soft dark card background
+    "--chat-input-bg": "#181818",          // slightly darker for input area
+    "--chat-border": "#444444",            // dark subtle border
+    "--card-hover-bg": "#2a2a2a",
+    "--progress-bar-active-bg": "#ff38b8",
+    "--navbar-hover-bg": "#333333",
+    "--error-alert-bg": "#e74c3c",
+    "--active-button-bg": "#333333",
+    "--button-hover-bg": "#555555",
+
+
+
+
+    "--heading-font-weight": "600",       // Adjust heading weight
+    "--body-font-family": "'Roboto', sans-serif", // Font for body text
+    "--button-gradient-bg": "linear-gradient(45deg, #ff38b8, #6464ff)",
   };
 
   const lightModeStyles = {
@@ -86,9 +106,9 @@ const applyTheme = () => {
     "--background-logo-color": "#000000",
     "--input-group-text-bg": "#f0f0f0",
     "--input-group-text-border": "#cccccc",
-    "--input-focus-bg": "#ffffff", // new
-    "--input-focus-shadow": "#ff38b840", // new (semi-transparent pink)
-    "--input-placeholder-color": "#aaaaaa", // new
+    "--input-focus-bg": "#ffffff",
+    "--input-focus-shadow": "#ff38b840",
+    "--input-placeholder-color": "#aaaaaa",
     "--glow-bg": "#ff38b8",
     "--glow-fade": "#ff38b8",
     "--verify-alert-bg": "#6666ff",
@@ -107,6 +127,21 @@ const applyTheme = () => {
     "--navbar-text": "#000000",
     "--step-indicator-bg": "#dddddd", // new
     "--progress-line-bg": "#cccccc", // new
+    "--message-sent-bg": "#6464ff",        // nice blue accent for sent
+    "--message-received-bg": "#f0f0f0",    // light gray for received
+    "--chat-input-bg": "#f9f9f9",          // light input background
+    "--chat-border": "#cccccc",            // soft border
+    "--card-hover-bg": "#eaeaea",
+    "--card-hover-bg": "#eaeaea",
+    "--progress-bar-active-bg": "#ff38b8",
+    "--navbar-hover-bg": "#f2f2f2",
+    "--error-alert-bg": "#ff6b6b",
+    "--active-button-bg": "#dddddd",
+    "--button-hover-bg": "#f0f0f0",
+
+    "--heading-font-weight": "600",       // Adjust heading weight
+    "--body-font-family": "'Roboto', sans-serif", // Font for body text
+    "--button-gradient-bg": "linear-gradient(45deg, #ff38b8, #6464ff)",
   };
 
   const styles = theme.value === "dark" ? darkModeStyles : lightModeStyles;
@@ -127,3 +162,4 @@ onMounted(() => {
   applyTheme();
 });
 </script>
+

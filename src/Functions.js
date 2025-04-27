@@ -8,7 +8,7 @@ import { doc, onSnapshot, collection, query, onSnapshot as onCollectionSnapshot 
 export function getAccountInfo(userId) {
     const accountInfo = vueRef(null);
 
-    const accountInfoRef = doc(db, "accounts", userId);
+    const accountInfoRef = doc(db, "users", userId);
     const unsubscribe = onSnapshot(accountInfoRef, (docSnap) => {
         if (docSnap.exists()) {
             accountInfo.value = { id: docSnap.id, ...docSnap.data() };
@@ -38,22 +38,33 @@ export function getAccountInfo(userId) {
 export function getAccountsInfoBy(object) {
     const filteredAccounts = vueRef([]);
 
-    const accountInfoRef = collection(db, "accounts");
+    const accountInfoRef = collection(db, "users");
 
     const unsubscribe = onCollectionSnapshot(accountInfoRef, (querySnapshot) => {
-        const accounts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        filteredAccounts.value = accounts.filter(account =>
+        if (!querySnapshot.empty) {
+          const accounts = querySnapshot.docs.map(doc => {
+            const accountData = doc.data();
+            return {
+              id: doc.id,
+              ...accountData,
+              logoURL: accountData.logoURL || 'https://res.cloudinary.com/duwrqxvey/image/upload/v1745689776/default-avatar-icon-of-social-media-user-vector_zoyryv.jpg', // add default logo if missing
+            };
+          });
+      
+          filteredAccounts.value = accounts.filter(account =>
             Object.entries(object).every(([key, value]) => {
-                if (Array.isArray(value)) {
-                    return value.includes(account[key]);
-                } else {
-                    return account[key] === value;
-                }
+              if (Array.isArray(value)) {
+                return value.includes(account[key]);
+              } else {
+                return account[key] === value;
+              }
             })
-        );
-    });
-
+          );
+        } else {
+          filteredAccounts.value = []; // no data
+        }
+      });
+      
     return { filteredAccounts, unsubscribe };
 }
 
