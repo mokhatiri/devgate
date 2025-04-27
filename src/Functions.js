@@ -12,7 +12,7 @@ export function getAccountInfo(userId) {
     const unsubscribe = onSnapshot(accountInfoRef, (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
-            accountInfo.value = { id: docSnap.id, ...data, logoURL: data.logoURL || "https://res.cloudinary.com/duwrqxvey/image/upload/v1745689776/default-avatar-icon-of-social-media-user-vector_zoyryv.jpg"};
+            accountInfo.value = { id: docSnap.id, ...data, photoURL: data.photoURL || "https://res.cloudinary.com/duwrqxvey/image/upload/v1745689776/default-avatar-icon-of-social-media-user-vector_zoyryv.jpg"};
         } else {
             accountInfo.value = null;
         }
@@ -48,7 +48,7 @@ export function getAccountsInfoBy(object) {
             return {
               id: doc.id,
               ...accountData,
-              logoURL: accountData.logoURL || 'https://res.cloudinary.com/duwrqxvey/image/upload/v1745689776/default-avatar-icon-of-social-media-user-vector_zoyryv.jpg', // add default logo if missing
+              photoURL: accountData.photoURL || 'https://res.cloudinary.com/duwrqxvey/image/upload/v1745689776/default-avatar-icon-of-social-media-user-vector_zoyryv.jpg', // add default logo if missing
             };
           });
       
