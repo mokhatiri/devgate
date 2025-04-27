@@ -25,10 +25,16 @@ const routes = [
     component: () => import('../views/ForgotPassword.vue')
   },
   {
-    path: '/chat',
-    name: 'chat',
-    component: () => import('../views/ChatView.vue')
+    path : '/explore/:id?',
+    name : 'explore',
+    component : () => import('../views/ExploreView.vue')
+  },
+  {
+  path: '/addcommunity',
+  name: 'addcommunity',
+  component: () => import('../views/AddCommunityView.vue')
   }
+
 ]
 
 const router = createRouter({
