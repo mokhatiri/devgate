@@ -46,10 +46,52 @@
               <span v-if="reply.parentReplyId" class="ms-2 code-comment">
                 // replying to {{ getParentUserName(reply.parentReplyId) }}
               </span>
+              
+              <!-- Reply actions dropdown for owner -->
+              <div v-if="isReplyOwner(reply)" class="ms-auto dropdown">
+                <button class="btn btn-sm action-btn" data-bs-toggle="dropdown">
+                  <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <button class="dropdown-item code-font" @click="toggleEditReply(reply)">
+                      <i class="bi bi-pencil me-2"></i> edit()
+                    </button>
+                  </li>
+                  <li>
+                    <button class="dropdown-item code-font text-danger" @click="confirmDeleteReply(reply)">
+                      <i class="bi bi-trash me-2"></i> delete()
+                    </button>
+                  </li>
+                </ul>
+              </div>
             </div>
 
-            <div class="reply-content code-font mb-2">
+            <!-- Reply content (editable or display mode) -->
+            <div v-if="activeEditReplyId !== reply.id" class="reply-content code-font mb-2">
               {{ reply.content }}
+            </div>
+            <div v-else class="edit-reply-form mb-2">
+              <textarea
+                class="form-control reply-textarea code-font"
+                v-model="editedReplyContent"
+                rows="2"
+              ></textarea>
+              <div class="d-flex justify-content-end mt-2">
+                <button 
+                  class="btn btn-sm btn-outline-secondary me-2"
+                  @click="cancelEditReply"
+                >
+                  <span class="code-font">cancel()</span>
+                </button>
+                <button
+                  class="btn btn-sm reply-submit-btn"
+                  :disabled="!editedReplyContent.trim()"
+                  @click="saveEditedReply(reply)"
+                >
+                  <span class="code-font">save()</span>
+                </button>
+              </div>
             </div>
 
             <div class="reply-actions d-flex align-items-center">
@@ -129,7 +171,7 @@
           <div class="d-flex align-items-center mb-2">
             <img
               :src="currentUserPhoto || '/api/placeholder/32/32'"
-              alt="Profile"
+              alt="Profile" 
               class="profile-image me-2"
             />
             <span class="code-font">{{ currentUserName }}</span>
@@ -172,6 +214,34 @@
         <span class="code-font">add_reply()</span>
       </button>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteModal" class="delete-modal" @click="cancelDelete">
+      <div class="delete-modal-content" @click.stop>
+        <div class="terminal-panel">
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+            </div>
+            <div class="terminal-title">delete_confirmation.sh</div>
+          </div>
+          <div class="terminal-body p-3">
+            <p class="code-font mb-3">// Are you sure you want to delete this reply?</p>
+            <p class="code-font text-danger mb-3">// This action cannot be undone.</p>
+            <div class="d-flex justify-content-end">
+              <button class="btn btn-sm btn-outline-secondary me-2" @click="cancelDelete">
+                <span class="code-font">cancel()</span>
+              </button>
+              <button class="btn btn-sm btn-danger" @click="deleteReply">
+                <span class="code-font">confirm_delete()</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -185,6 +255,7 @@ import {
   where,
   addDoc,
   updateDoc,
+  deleteDoc,
   arrayUnion,
   arrayRemove,
   serverTimestamp,
@@ -192,7 +263,7 @@ import {
   limit,
   startAfter
 } from "firebase/firestore";
-import { db, auth , CurrUser } from "@/firebase";
+import { db, auth, CurrUser } from "@/firebase";
 
 const props = defineProps({
   postId: {
@@ -223,9 +294,15 @@ const hasMoreReplies = ref(false);
 const repliesPerPage = 5;
 const userData = CurrUser;
 
+// Edit and delete state variables
+const activeEditReplyId = ref(null);
+const editedReplyContent = ref('');
+const showDeleteModal = ref(false);
+const replyToDelete = ref(null);
+
 // Current user info
 const currentUserName = computed(() => {
-  return CurrUser.value.name
+  return CurrUser.value.name;
 });
 
 const currentUserPhoto = computed(() => {
@@ -248,6 +325,12 @@ const sortedReplies = computed(() => {
 function isReplyLiked(reply) {
   if (!reply.likes || !auth.currentUser) return false;
   return reply.likes.includes(auth.currentUser.uid);
+}
+
+// Check if current user is the reply owner
+function isReplyOwner(reply) {
+  if (!auth.currentUser || !reply.user) return false;
+  return reply.user.id === auth.currentUser.uid;
 }
 
 // Toggle reply visibility
@@ -384,8 +467,8 @@ async function submitReplyToReply(parentReply) {
       content: replyToReplyContent.value,
       user: {
         id: auth.currentUser.uid,
-        name: auth.currentUser.displayName || 'Anonymous',
-        photoURL: auth.currentUser.photoURL,
+        name: currentUserName.value,
+        photoURL: currentUserPhoto.value,
       },
       timestamp: serverTimestamp(),
       likes: []
@@ -446,6 +529,103 @@ async function toggleLike(reply) {
     }
   } catch (error) {
     console.error("Error toggling like:", error);
+  }
+}
+
+// Edit reply functions
+function toggleEditReply(reply) {
+  activeEditReplyId.value = reply.id;
+  editedReplyContent.value = reply.content;
+}
+
+function cancelEditReply() {
+  activeEditReplyId.value = null;
+  editedReplyContent.value = '';
+}
+
+async function saveEditedReply(reply) {
+  if (!editedReplyContent.value.trim() || !isReplyOwner(reply)) return;
+  
+  try {
+    const replyRef = doc(db, "postReplies", reply.id);
+    await updateDoc(replyRef, {
+      content: editedReplyContent.value,
+      edited: true,
+      lastEdited: new Date()
+    });
+    
+    // Update local state
+    const replyIndex = replies.value.findIndex(r => r.id === reply.id);
+    if (replyIndex !== -1) {
+      replies.value[replyIndex].content = editedReplyContent.value;
+      replies.value[replyIndex].edited = true;
+      replies.value[replyIndex].lastEdited = new Date();
+    }
+    
+    activeEditReplyId.value = null;
+    editedReplyContent.value = '';
+  } catch (error) {
+    console.error("Error updating reply:", error);
+  }
+}
+
+// Delete reply functions
+function confirmDeleteReply(reply) {
+  replyToDelete.value = reply;
+  showDeleteModal.value = true;
+}
+
+function cancelDelete() {
+  showDeleteModal.value = false;
+  replyToDelete.value = null;
+}
+
+async function deleteReply() {
+  if (!replyToDelete.value || !isReplyOwner(replyToDelete.value)) return;
+  
+  try {
+    const replyId = replyToDelete.value.id;
+    
+    // Delete the reply from the postReplies collection
+    await deleteDoc(doc(db, "postReplies", replyId));
+    
+    // Remove the reply ID from the post's replies array
+    await updateDoc(doc(db, "posts", props.postId), {
+      replies: arrayRemove(replyId)
+    });
+    
+    // Additionally, handle any nested replies that might be children of this one
+    const childRepliesQuery = query(
+      collection(db, "postReplies"),
+      where("parentReplyId", "==", replyId)
+    );
+    
+    const childRepliesSnapshot = await getDocs(childRepliesQuery);
+    
+    // Delete each child reply
+    const deleteChildPromises = childRepliesSnapshot.docs.map(childDoc => {
+      const childId = childDoc.id;
+      return Promise.all([
+        deleteDoc(doc(db, "postReplies", childId)),
+        updateDoc(doc(db, "posts", props.postId), {
+          replies: arrayRemove(childId)
+        })
+      ]);
+    });
+    
+    await Promise.all(deleteChildPromises);
+    
+    // Update local state
+    replies.value = replies.value.filter(r => 
+      r.id !== replyId && r.parentReplyId !== replyId
+    );
+    
+    showDeleteModal.value = false;
+    replyToDelete.value = null;
+  } catch (error) {
+    console.error("Error deleting reply:", error);
+    showDeleteModal.value = false;
+    replyToDelete.value = null;
   }
 }
 
@@ -646,5 +826,24 @@ onMounted(() => {
 .load-more-btn {
   font-size: 12px;
   padding: 4px 10px;
+}
+
+/* Delete modal */
+.delete-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.delete-modal-content {
+  max-width: 450px;
+  width: 90%;
 }
 </style>
