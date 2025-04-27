@@ -82,10 +82,6 @@ const applyTheme = () => {
     "--error-alert-bg": "#e74c3c",
     "--active-button-bg": "#333333",
     "--button-hover-bg": "#555555",
-
-
-
-
     "--heading-font-weight": "600",       // Adjust heading weight
     "--body-font-family": "'Roboto', sans-serif", // Font for body text
     "--button-gradient-bg": "linear-gradient(45deg, #ff38b8, #6464ff)",
@@ -138,7 +134,6 @@ const applyTheme = () => {
     "--error-alert-bg": "#ff6b6b",
     "--active-button-bg": "#dddddd",
     "--button-hover-bg": "#f0f0f0",
-
     "--heading-font-weight": "600",       // Adjust heading weight
     "--body-font-family": "'Roboto', sans-serif", // Font for body text
     "--button-gradient-bg": "linear-gradient(45deg, #ff38b8, #6464ff)",
