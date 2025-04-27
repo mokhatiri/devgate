@@ -133,25 +133,14 @@
               </button>
               </div>
             </div>
-            <div class="chat-window-controls">
-              <button
-                class="window-control"
-                @click.stop="toggleMinimize(index)"
-              >
-                {{ chat.minimized ? "□" : "_" }}
-              </button>
-              <button class="window-control" @click.stop="resizeWindow(index)">
-                ⊞
-              </button>
-              <button
-                class="window-control close"
-                @click.stop="closeChat(index)"
-              >
-                ×
-              </button>
+            <div>
+              <div class="window-dots">
+                <span class="dot dot-green window-control" @click.stop="toggleMinimize(index)"></span>
+                <span class="dot dot-yellow window-control" @click.stop="resizeWindow(index)"></span>
+                <span class="dot dot-red close window-control" @click.stop="closeChat(index)"></span>
+              </div>
             </div>
           </div>
-
           <!-- Chat Window Content -->
           <div class="chat-window-content" v-show="!chat.minimized">
             <div class="chat-messages">
@@ -945,7 +934,7 @@ async function createGroup() {
   display: flex;
   flex-direction: column;
   min-width: 300px;
-  min-height: 200px; /* Minimum height for resizing */
+  min-height: 40px;
 }
 
 .chat-window.focused {
@@ -986,40 +975,38 @@ async function createGroup() {
   color: var(--accent-color);
 }
 
-.chat-window-controls {
+.window-dots {
   display: flex;
-  gap: 5px;
+  gap: 6px;
 }
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.dot-red {
+  background-color: #ff5f56;
+}
+
+.dot-yellow {
+  background-color: #ffbd2e;
+}
+
+.dot-green {
+  background-color: #27c93f;
+}
+
 
 .window-control {
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: none;
-  color: var(--text-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 3px;
   cursor: pointer;
-  font-size: 12px;
-  padding: 0;
-}
-
-.window-control:hover {
-  background: var(--button-hover-bg);
-}
-
-.window-control.close {
-  color: #ff5f56;
-}
-
-.window-control.close:hover {
-  background: #ff5f5630;
 }
 
 .window-control.only{
   color: var(--accent-secondary);
+  background: none;
+  border: none;
 }
 
 .window-control.only:hover {
