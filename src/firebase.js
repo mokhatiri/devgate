@@ -108,7 +108,6 @@ function startListeningToCurrentUser() {
       CurrUser.value = {}; // signed out
       if (unsubscribe) {
         unsubscribe();
-        unsubscribe();
         unsubscribe = null;
       }
     }
