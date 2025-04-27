@@ -11,7 +11,8 @@ export function getAccountInfo(userId) {
     const accountInfoRef = doc(db, "users", userId);
     const unsubscribe = onSnapshot(accountInfoRef, (docSnap) => {
         if (docSnap.exists()) {
-            accountInfo.value = { id: docSnap.id, ...docSnap.data() };
+            const data = docSnap.data();
+            accountInfo.value = { id: docSnap.id, ...data, logoURL: data.logoURL || "https://res.cloudinary.com/duwrqxvey/image/upload/v1745689776/default-avatar-icon-of-social-media-user-vector_zoyryv.jpg"};
         } else {
             accountInfo.value = null;
         }
