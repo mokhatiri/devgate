@@ -118,7 +118,7 @@
               class="user-item"
             >
               <img 
-                :src="user.logoURL" 
+                :src="user.photoURL" 
                 alt="Profile" 
                 class="user-avatar"
               />

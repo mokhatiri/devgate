@@ -217,12 +217,13 @@
       const communityData = {
         name: communityName.value.trim(),
         bio: communityBio.value.trim(),
-        admins: [currentUser.value.uid], // Current user as admin
+        admins: [auth.currentUser.uid], // Current user as admin
         bannedUsers: [], // Initially empty
         createdAt: serverTimestamp(),
         posts: [] // Initially empty
       };
       
+      console.log("Communitydata to be added: " , communityData)
       const docRef = await addDoc(collection(db, "communities"), communityData);
       console.log("Community created with ID: ", docRef.id);
       
