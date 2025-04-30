@@ -49,13 +49,14 @@
               class="community-item"
               :class="{ 'active': selectedCommunityId && selectedCommunityId === community.id }"
               @click="selectCommunity(community.id)"
-            >
+              
+              >
               <div class="community-icon">
                 <i class="bi bi-braces"></i>
               </div>
               <div class="community-info">
                 <h5 class="community-name code-font">{{ community.name }}</h5>
-                <p class="community-members code-comment">// {{ community.memberCount || 0 }} developers</p>
+                <p class="community-members code-comment">// {{ community.posts.length || 0 }} posts </p>
               </div>
             </div>
           </div>
@@ -134,11 +135,11 @@
   </template>
   
   <script setup>
-  import { ref, computed, onMounted, onUnmounted } from "vue";
-  import { collection, query, onSnapshot, getDocs } from 'firebase/firestore';
+  import { ref, computed, onMounted, onUnmounted , watch} from "vue";
+  import { collection, query, onSnapshot, getDoc , doc } from 'firebase/firestore';
   import { db } from '@/firebase';
   import { getAccountsInfoBy } from "@/Functions";
-  import { CurrUser } from "@/firebase";
+  import { auth , CurrUser } from "@/firebase";
   import CommunityDisplay from '@/components/CommunityDisplay.vue';
   
   const communitySearch = ref("");
@@ -196,8 +197,22 @@
     }
   }
   
-  const selectCommunity = (communityId) => {
+  const selectCommunity = async (communityId) => {
+    try{
+    const communityRef = await getDoc(doc(db , 'communities' , communityId))
+    const community = communityRef.data()
+    if (community.bannedUsers.includes(auth.currentUser.uid)){
+      alert('You are banned from accessing ')
+      return;
+    }
+    
     selectedCommunityId.value = communityId;
+    }
+    catch(e){
+      console.log(e)
+    
+    }
+    
   };
   
   let unsubscribeCommunities = null;
@@ -214,7 +229,11 @@
     if (unsubscribeCommunities) {
       unsubscribeCommunities();
     }
+  })
+  watch(filteredCommunities, (newCommunities) => {
+    console.log("Communities are : ", newCommunities);
   });
+    
   </script>
   
   <style scoped>

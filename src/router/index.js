@@ -30,9 +30,9 @@ const routes = [
     component : () => import('../views/ExploreView.vue')
   },
   {
-  path: '/addcommunity',
-  name: 'addcommunity',
-  component: () => import('../views/AddCommunityView.vue')
+    path: '/addcommunity',
+    name: 'addcommunity',
+    component: () => import('../views/AddCommunityView.vue')
   },
   {
   path: '/chat',
@@ -45,10 +45,17 @@ const routes = [
     component: () => import('../views/GoalDetailsView.vue')
   },
   {
-    path: '/test',
-    name: 'test',
-    component: () => import('../views/TestView.vue')
-  }
+    path : '/editcommunity/:id',
+    name : 'editcommunity',
+    component : () => import ('../views/EditCommunity.vue')
+  },
+  {
+    path : '/communitydetails/:id',
+    name :'communitydetails',
+    component : () => import ('../views/CommunityDetails.vue')
+  } 
+
+
 ]
 
 const router = createRouter({
