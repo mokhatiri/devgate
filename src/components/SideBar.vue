@@ -50,15 +50,17 @@
       <router-link to="/settings" class="nav-link sidebar-link">
       <i class="bi bi-gear me-2" ></i> <span class="text-appear" :class="{invisible : isCollapsed}">Settings</span>
       </router-link>
+      <div class="nav-link sidebar-link" @click="auth.signOut()">
+      <i class="bi bi-box-arrow-right me-2"></i> <span class="text-appear" :class="{invisible : isCollapsed}">Logout</span>
+      </div>
       </nav>  
     </div>
   </div>
 </template>
   
   <script setup>
-  import { ref, watch} from "vue";
-  import { CurrUser } from "@/firebase";
-import { Collapse } from "bootstrap/dist/js/bootstrap.bundle.min";
+  import { ref } from "vue";
+  import { auth, CurrUser } from "@/firebase";
 
   const isCollapsed = ref(true);
 

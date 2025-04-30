@@ -24,6 +24,33 @@
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div class="terminal-heading">COMMUNICATIONS_</div>
           </div>
+          
+          <!-- Add search and filter controls -->
+          <div class="search-controls mb-3">
+            <div class="search-box">
+              <input 
+                type="text" 
+                v-model="searchQuery" 
+                placeholder="Search users..."
+                class="terminal-input search-input"
+              >
+            </div>
+            <div class="filter-options">
+              <button 
+                :class="['terminal-btn-sm', { active: userFilter === 'all' }]"
+                @click="userFilter = 'all'"
+              >
+                ALL
+              </button>
+              <button 
+                :class="['terminal-btn-sm', { active: userFilter === 'following' }]"
+                @click="userFilter = 'following'"
+              >
+                FOLLOWING
+              </button>
+            </div>
+          </div>
+          
           <button
             class="terminal-btn-sm"
             style="width: 100%"
@@ -33,10 +60,10 @@
           </button>
 
           <div class="terminal-section mt-4">
-            <div class="terminal-heading">CONTACTS_</div>
+            <div class="terminal-heading">USERS_</div>
             <ul class="terminal-list">
               <li
-                v-for="user in users"
+                v-for="user in filteredUsers"
                 :key="user.id"
                 class="terminal-list-item"
                 @click="toggleChat(user, false)"
@@ -44,7 +71,8 @@
                   active: activeChats.some(
                     (chat) => !chat.isGroup && chat.entity.id === user.id
                   ),
-                  'has-unread': hasUnreadMessagesForEntity(user.id, false)
+                  'has-unread': hasUnreadMessagesForEntity(user.id, false),
+                  'is-following': user.followers?.includes(CurrUser.value?.uid)
                 }"
               >
                 <div class="d-flex align-items-center">
@@ -60,7 +88,14 @@
                   </div>
                 </div>
                 <div class="status-indicators">
-                  <div v-if="hasUnreadMessagesForEntity(user.id, false)" class="unread-indicator">!</div>
+                  <div v-if="user.followers?.includes(CurrUser.value?.uid)" 
+                       class="following-indicator">
+                    ★
+                  </div>
+                  <div v-if="hasUnreadMessagesForEntity(user.id, false)" 
+                       class="unread-indicator">
+                    !
+                  </div>
                 </div>
               </li>
             </ul>
@@ -122,6 +157,7 @@
               <img
                 :src="chat.entity.photoURL || 'default-avatar-url'"
                 class="chat-window-avatar"
+                @click="chat.isGroup ? openGroupSettings(chat.entity.id) : $router.push('/userprofile/'+chat.entity.id)"
               />
               <div class="chat-window-title">
                 {{ chat.isGroup ? chat.entity.name : chat.entity.name }}
@@ -352,12 +388,21 @@
     <div v-if="imageViewer.visible" class="image-viewer-overlay" @click="closeImageViewer">
       <img :src="imageViewer.imageUrl" class="image-viewer-image" />
     </div>
+
+    <!-- Group Settings Component -->
+    <GroupSettings
+      v-if="showGroupSettings"
+      :group="selectedGroup"
+      :userCache="userCache"
+      @close="showGroupSettings = false"
+      @group-left="handleGroupLeft"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, onUnmounted, nextTick } from "vue";
-import { db, auth } from "@/firebase";
+import { ref, onMounted, watch, onUnmounted, nextTick, computed } from "vue";
+import { db, auth, notificationService, NotificationType } from "@/firebase";
 import { getAccountsInfoBy } from "@/Functions";
 import {
   collection,
@@ -377,6 +422,7 @@ import {
 import { Modal } from "bootstrap";
 import OnlineDot from "@/components/OnlineDot.vue";
 import { handleImageUpload, getImageUrl } from "@/cloudinary.js";
+import GroupSettings from '@/components/GroupSettings.vue';
 
 // States
 const users = ref([]);
@@ -427,6 +473,14 @@ const currentChatType = ref({
   chatId: null
 });
 
+// Group settings
+const showGroupSettings = ref(false);
+const selectedGroup = ref(null);
+
+// Search and filter controls
+const searchQuery = ref("");
+const userFilter = ref("all");
+
 // Get a unique key for each chat for tracking unread messages
 function getUnreadKey(chat) {
   return chat.isGroup 
@@ -440,6 +494,23 @@ function hasUnreadMessagesForEntity(entityId, isGroup) {
   return (unreadMessages.value[key]?.length > 0) || 
          (allUnreadMessages.value[key]?.length > 0);
 }
+
+// Add this computed property
+const filteredUsers = computed(() => {
+  return users.value.filter(user => {
+    // Search filter
+    const matchesSearch = 
+      user.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      user.username.toLowerCase().includes(searchQuery.value.toLowerCase());
+
+    // Following filter
+    const matchesFilter = 
+      userFilter.value === 'all' || 
+      (userFilter.value === 'following' && user.followers?.includes(CurrUser.value?.uid));
+
+    return matchesSearch && matchesFilter;
+  });
+});
 
 onMounted(() => {
   // Fetch all users excluding the current user
@@ -547,7 +618,15 @@ onMounted(() => {
     localStorage.setItem('lastReadTimestamps', JSON.stringify(newVal));
   }, { deep: true });
 
+  // Setup group invite listener
+  const unsubscribeInvites = setupGroupInviteListener();
 
+  // Update cleanup
+  onUnmounted(() => {
+    if (unsubscribeInvites) {
+      unsubscribeInvites();
+    }
+  });
 });
 
 // Scroll to the last message, including unread messages
@@ -563,20 +642,21 @@ function scrollToLastMessage(chatIndex) {
   });
 }
 
-// Add a notification
-async function addNotification(chat, message, isGroup) {
-  const notification = {
-    chatId: isGroup ? chat.entity.id : [currUserId, chat.entity.id].sort().join("_"),
-    isGroup: isGroup,
-    senderId: currUserId,
-    text: message.text || "[IMAGE]",
-    createdAt: new Date(),
+// Handle message notification
+async function handleMessageNotification(chat, message) {
+  if (message.senderId === currUserId) return;
+
+  const sender = {
+    id: message.senderId,
+    displayName: getUserName(message.senderId, chat),
+    photoURL: getUserAvatar(message.senderId, chat)
   };
 
-  const userId = chat.isGroup ? null : chat.entity.id; // Notify the other user in private chats
-  if (userId) {
-    await addDoc(collection(db, "users", userId, "notifications"), notification);
-  }
+  await notificationService.sendMessageNotification(
+    chat.entity.id,
+    message,
+    sender
+  );
 }
 
 // Fix the clearNotifications function
@@ -591,6 +671,7 @@ async function clearNotifications(chat, isGroup) {
   const chatId = isGroup ? chat.entity.id : [currUserId, chat.entity.id].sort().join('_');
   const notificationsQuery = query(
     collection(db, "users", currUserId, "notifications"),
+    where("type", "==", "message"),
     where("chatId", "==", chatId),
     where("isGroup", "==", isGroup)
   );
@@ -701,13 +782,12 @@ function handleNewMessages(chatIndex, messages) {
 async function markMessagesAsRead(chat) {
   const chatKey = getUnreadKey(chat);
   lastReadTimestamps.value[chatKey] = new Date();
-
-  await updateLastReadTime(chat);
   // Move unread messages to read messages
   if (unreadMessages.value[chatKey]?.length > 0) {
     chat.messages = [...chat.messages, ...unreadMessages.value[chatKey]];
     unreadMessages.value[chatKey] = [];
   }
+  await updateLastReadTime(chat);
 }
 
 // Update loadUserMessages function
@@ -782,7 +862,6 @@ async function sendMessage(chatIndex) {
   const chat = activeChats.value[chatIndex];
   if (!chat || !chat.newMessage.trim()) return;
 
-  // mark messages as read
   await markMessagesAsRead(chat);
 
   const message = {
@@ -791,22 +870,19 @@ async function sendMessage(chatIndex) {
     createdAt: new Date(),
   };
 
+  let messageRef;
   if (!chat.isGroup) {
     const chatId = [currUserId, chat.entity.id].sort().join("_");
-    await addDoc(collection(db, "chats", chatId, "messages"), message);
-    await addNotification(chat, message, false);
+    messageRef = await addDoc(collection(db, "chats", chatId, "messages"), message);
   } else {
     const groupId = chat.entity.id;
-    await addDoc(collection(db, "groups", groupId, "messages"), message);
-    await addNotification(chat, message, true);
+    messageRef = await addDoc(collection(db, "groups", groupId, "messages"), message);
   }
 
-  // Add a notification for the message
+  message.id = messageRef.id;
+  await handleMessageNotification(chat, message);
 
-  // Clear the input field
   activeChats.value[chatIndex].newMessage = "";
-
-  // Scroll to the last message
   nextTick(() => scrollToLastMessage(chatIndex));
 }
 
@@ -1170,7 +1246,9 @@ async function createGroup() {
   const groupDoc = await addDoc(collection(db, "groups"), {
     name: groupName.value,
     members: groupMembers.value.concat(currUserId),
+    admins: [currUserId], // Creator is the first admin
     createdAt: new Date(),
+    photoURL: "https://res.cloudinary.com/duwrqxvey/image/upload/v1745712112/people-icon-business-corporate-team-working-together-social-network-group-logo-symbol-crowd-sign-leadership-community-conce-118388147_wpfwke.jpg"
   });
 
   await addDoc(collection(db, "groups", groupDoc.id, "messages"), {
@@ -1312,6 +1390,104 @@ function setupGlobalMessageListeners() {
     }
   });
 }
+
+// Open group settings
+async function openGroupSettings(groupId) {
+  const group = userGroups.value.find(g => g.id === groupId);
+  if (group) {
+    // Ensure we have the latest group data
+    const groupDoc = await getDoc(doc(db, 'groups', groupId));
+    if (groupDoc.exists()) {
+      selectedGroup.value = {
+        id: groupDoc.id,
+        ...groupDoc.data()
+      };
+      showGroupSettings.value = true;
+    }
+  }
+}
+
+// Handle group left event
+function handleGroupLeft() {
+  // Close any active chat windows for this group
+  const index = activeChats.value.findIndex(
+    chat => chat.isGroup && chat.entity.id === selectedGroup.value.id
+  );
+  if (index !== -1) {
+    closeChat(index);
+  }
+  selectedGroup.value = null;
+  showGroupSettings.value = false;
+}
+
+// Invite user to group
+async function inviteUserToGroup(userId, groupData) {
+  const inviter = {
+    id: currUserId,
+    displayName: userCache.value[currUserId]?.name || 'Unknown User',
+    photoURL: userCache.value[currUserId]?.photoURL
+  };
+
+  try {
+    // Create invite in Firestore
+    await addDoc(collection(db, 'groups', groupData.id, 'invites'), {
+      userId,
+      inviterId: currUserId,
+      status: 'pending',
+      createdAt: new Date()
+    });
+
+    // Send notification
+    await notificationService.sendGroupInviteNotification(
+      userId,
+      {
+        id: groupData.id,
+        name: groupData.name,
+        photoURL: groupData.photoURL
+      },
+      inviter
+    );
+  } catch (error) {
+    console.error('Error inviting user to group:', error);
+    throw error;
+  }
+}
+
+// Handle incoming group invites
+function setupGroupInviteListener() {
+  if (!currUserId) return;
+
+  const invitesQuery = query(
+    collection(db, 'users', currUserId, 'notifications'),
+    where('type', '==', NotificationType.GROUP_INVITE),
+    where('read', '==', false)
+  );
+
+  return onSnapshot(invitesQuery, async (snapshot) => {
+    for (const change of snapshot.docChanges()) {
+      if (change.type === 'added') {
+        const invite = change.doc.data();
+        const groupId = invite.data.groupId;
+
+        // Add the group to userGroups if accepted
+        // You might want to add UI for accepting/rejecting invites
+        if (invite.status === 'accepted') {
+          const groupRef = doc(db, 'groups', groupId);
+          const groupDoc = await getDoc(groupRef);
+          
+          if (groupDoc.exists()) {
+            const groupData = groupDoc.data();
+            if (!groupData.members.includes(currUserId)) {
+              await updateDoc(groupRef, {
+                members: [...groupData.members, currUserId]
+              });
+            }
+          }
+        }
+      }
+    }
+  });
+}
 </script>
 
 <style scoped>
@@ -1331,6 +1507,7 @@ function setupGlobalMessageListeners() {
 .terminal-header {
   background: var(--card-bg);
   border-bottom: 1px solid var(--accent-color);
+  margin-bottom: 0px;
   padding: 8px 12px;
   display: flex;
   justify-content: space-between;
@@ -1513,6 +1690,7 @@ function setupGlobalMessageListeners() {
   height: 20px;
   border-radius: 3px;
   margin-right: 8px;
+  cursor: pointer;
 }
 
 .chat-window-title {
@@ -1914,4 +2092,64 @@ function setupGlobalMessageListeners() {
   padding: 5px 0;
 }
 
+/* Add to your existing styles */
+.search-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.search-box {
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  padding-left: 28px;
+  font-size: 0.9em;
+}
+
+.search-box::before {
+  content: '>';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accent-color);
+}
+
+.filter-options {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.filter-options .terminal-btn-sm {
+  flex: 1;
+  text-align: center;
+}
+
+.filter-options .terminal-btn-sm.active {
+  background: var(--accent-color);
+  color: var(--dark-bg);
+}
+
+.following-indicator {
+  color: var(--accent-color);
+  font-size: 0.9em;
+  margin-right: 0.5rem;
+}
+
+.terminal-list-item.is-following {
+  border-left: 2px solid var(--accent-color);
+}
+
+.status-indicators {
+  display: flex;
+  align-items: center;
+}
+
+/* Add responsive styles for collapsed sidebar */
+.terminal-sidebar.collapsed .search-controls {
+  display: none;
+}
 </style>

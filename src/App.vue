@@ -11,13 +11,39 @@
       <i :class="theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill'"></i>
     </button>
 
+    <!-- Add the notifications container -->
+    <div class="notifications-container">
+      <TransitionGroup name="notification">
+        <div
+          v-for="notification in notifications"
+          :key="notification.id"
+          class="notification-popup"
+          :class="{ 'dark': theme === 'dark' }"
+        >
+          <div class="notification-content">
+            <img 
+              :src="notification.icon" 
+              class="notification-avatar"
+              @error="e => e.target.src = 'https://res.cloudinary.com/duwrqxvey/image/upload/v1745689776/default-avatar-icon-of-social-media-user-vector_zoyryv.jpg'"
+            />
+            <div class="notification-text">
+              <div class="notification-title">{{ notification.title }}</div>
+              <div class="notification-body">{{ notification.body }}</div>
+            </div>
+            <button class="notification-close" @click="removeNotification(notification.id)">×</button>
+          </div>
+        </div>
+      </TransitionGroup>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from "vue";
+import { onMounted, ref, computed, provide, onUnmounted } from "vue";
 import SideBar from "./components/SideBar.vue";
 import { useRoute } from "vue-router";
+import { auth } from "@/firebase";
+import { notificationService } from "@/firebase";
 
 const route = useRoute();
 
@@ -85,6 +111,8 @@ const applyTheme = () => {
     "--heading-font-weight": "600",       // Adjust heading weight
     "--body-font-family": "'Roboto', sans-serif", // Font for body text
     "--button-gradient-bg": "linear-gradient(45deg, #ff38b8, #6464ff)",
+    "--error-color": "#ff4444",
+    "--error-color-dark": "#cc0000",
   };
 
   const lightModeStyles = {
@@ -137,6 +165,8 @@ const applyTheme = () => {
     "--heading-font-weight": "600",       // Adjust heading weight
     "--body-font-family": "'Roboto', sans-serif", // Font for body text
     "--button-gradient-bg": "linear-gradient(45deg, #ff38b8, #6464ff)",
+    "--error-color": "#ff4444",
+    "--error-color-dark": "#cc0000",
   };
 
   const styles = theme.value === "dark" ? darkModeStyles : lightModeStyles;
@@ -153,8 +183,147 @@ const toggleTheme = () => {
   applyTheme();
 };
 
+// Add notification state
+const notifications = ref([]);
+
+// Add notification methods
+const addNotification = (notification) => {
+  const id = Date.now();
+  notifications.value.push({
+    id,
+    title: notification.title || 'New Message',
+    body: notification.text || 'You have a new message',
+    icon: notification.senderPhoto || 'default-avatar-url',
+    timestamp: new Date()
+  });
+
+  // Auto remove notification after 5 seconds
+  setTimeout(() => removeNotification(id), 5000);
+};
+
+const removeNotification = (id) => {
+  notifications.value = notifications.value.filter(n => n.id !== id);
+};
+
+// Make notifications available globally
+provide('notifications', {
+  add: addNotification,
+  remove: removeNotification,
+  list: notifications
+});
+
+// Request notification permission on mount
 onMounted(() => {
   applyTheme();
+  
+  // Set up notification handler
+  notificationService.setNotificationHandler((notification) => {
+    addNotification({
+      title: notification.title,
+      text: notification.body,
+      senderPhoto: notification.icon
+    });
+  });
+
+  // Start listening to notifications for current user
+  let unsubscribe;
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    unsubscribe = notificationService.listenToNotifications(currentUser.uid);
+  }
+
+  // Request notification permission
+  if (Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  // Cleanup on unmount
+  onUnmounted(() => {
+    if (unsubscribe) {
+      unsubscribe();
+    }
+  });
 });
 </script>
+
+<style>
+.notifications-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notification-popup {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.3s ease-out;
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.notification-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.notification-text {
+  flex: 1;
+}
+
+.notification-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+  color: var(--text-color);
+}
+
+.notification-body {
+  font-size: 0.9em;
+  color: var(--text-secondary);
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.2em;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.notification-enter-active,
+.notification-leave-active {
+  transition: all 0.3s ease;
+}
+
+.notification-enter-from,
+.notification-leave-to {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+</style>
 

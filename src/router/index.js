@@ -38,8 +38,17 @@ const routes = [
   path: '/chat',
   name: 'chat',
   component: () => import('../views/ChatView.vue')
+  },
+  {
+    path: '/goals/:id',
+    name: 'goal-details',
+    component: () => import('../views/GoalDetailsView.vue')
+  },
+  {
+    path: '/test',
+    name: 'test',
+    component: () => import('../views/TestView.vue')
   }
-
 ]
 
 const router = createRouter({

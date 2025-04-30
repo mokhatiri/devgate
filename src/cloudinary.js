@@ -3,7 +3,8 @@ import axios from 'axios';
 import {db} from './firebase';
 
 // Cloudinary URLs and settings
-const CLOUDINARY_UPLOAD_URL = 'https://api.cloudinary.com/v1_1/duwrqxvey/image/upload';
+const codename = 'duwrqxvey';
+const CLOUDINARY_UPLOAD_URL = 'https://api.cloudinary.com/v1_1/'+codename+'/image/upload';
 const CLOUDINARY_UPLOAD_PRESET = 'devgate_preset';
 
 // Upload image function
@@ -48,60 +49,12 @@ const deleteImage = async (publicId) => {
   db.collection('deleted').add({ publicId });
 }
 
-
-/*
-// deleteMany.js
-
-import { v2 as cloudinary } from 'cloudinary';
-
-cloudinary.config({
-  cloud_name: 'duwrqxvey',
-  api_key: process.env.CLOUDINARY_API_KEY, ---> this to be replaced when needed
-  api_secret: process.env.CLOUDINARY_API_SECRET, ----> same for this, and only run this with a secure backend
-});
-
-const publicIds = [
-  'folder/img1',
-  'folder/img2',
-  'img3',
-  // ...more
-];
-
-async function deleteImages(ids) {
-  try {
-    const res = await cloudinary.api.delete_resources(ids);
-    console.log('Deleted:', res);
-  } catch (err) {
-    console.error('Error deleting:', err);
-  }
-}
-
-deleteImages(publicIds);
-*/
-
-// options here :
-/*
-Option | Key | Example | Description
-Width | w | w: 300 | Resize image width
-Height | h | h: 300 | Resize image height
-Crop | c | c: 'fill' | Crop mode: fill, fit, scale, thumb, crop, etc.
-Quality | q | q: 'auto' | Auto or manual quality (e.g., q: 80)
-Format | f | f: 'auto' | Auto-select best format (jpg, png, webp, etc.)
-Effect | e | e: 'grayscale' | Image effects (e.g., sepia, blur, grayscale)
-Radius | r | r: 'max' | Rounded corners (use 'max' for full circle)
-Gravity | g | g: 'face' | Focus area (center, north, face, etc.)
-Background | b | b: 'white' | Background color (used with some crop modes)
-Border | bo | bo: '5px_solid_black' | Add border
-Overlay text | l_text | See below | Add text overlay
-Blur | e | e: 'blur:300' | Apply blur (value from 1–2000)
-*/
-
 const getImageUrl = (publicId, options = {}) => {
   /*
   usage example:
     const url = getImageUrl('publicId', { w: 300, h: 300, crop: 'fill' });
   */
-  const baseUrl = `https://res.cloudinary.com/duwrqxvey/image/upload`;
+  const baseUrl = `https://res.cloudinary.com/` + codename + `/image/upload`;
 
   const transformations = Object.entries(options)
     .map(([key, value]) => `${key}_${value}`)

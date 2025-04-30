@@ -210,7 +210,7 @@ const login = async () => {
     // Perform the login
     const userCredential = await signInWithEmailAndPassword(auth, form.value.email, form.value.password);
     console.log("User logged in:", userCredential.user);
-    router.push("/dashboard");
+    router.push("/");
   } catch (error) {
     console.error("Login Error:", error.message);
 

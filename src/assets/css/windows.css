@@ -1,0 +1,441 @@
+:root {
+  /* Add these to your existing CSS variables */
+  --transition-speed: 0.2s;
+  --transition-function: ease;
+  --accent-color-rgb: 99, 102, 241; /* Adjust based on your accent color */
+}
+/* Common dropdown styling */
+.dropdown {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 200px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+  max-height: 80vh; /* Limit height but allow scrolling */
+  overflow-y: auto; /* Add scrolling for y-axis */
+}
+
+.dashboard-container {
+    padding: 20px;
+    margin-left: 250px; /* Same as sidebar width */
+    transition: margin-left 0.3s ease;
+    font-family: var(--body-font-family);
+    background-color: var(--bs-body-bg);
+    color: var(--text-color);
+  }
+  
+  /* Window styling */
+  .window {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    overflow: hidden !important;
+    border: 1px solid var(--border-color);
+    margin-bottom: 20px;
+    height: 100%;
+    max-height: 100vh;
+  }
+  
+  .window-header {
+    display: flex;
+    align-items: center;
+    background-color: var(--navbar-bg);
+    padding: 8px 15px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .window-title {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 0;
+    text-align: center;
+  }
+  
+  .window-dots {
+    display: flex;
+    gap: 6px;
+  }
+  
+  .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  
+  .dot-red {
+    background-color: #ff5f56;
+  }
+  
+  .dot-yellow {
+    background-color: #ffbd2e;
+  }
+  
+  .dot-green {
+    background-color: #27c93f;
+  }
+  
+  .window-body {
+    position: relative;
+    height: calc(100% - 40px); /* 40px is approx the header height */
+    overflow-y: auto;
+  }
+  
+  .line-numbers {
+    position: absolute;
+    left: 0;
+    top: 0;
+    padding: 15px 8px;
+    background-color: var(--dark-bg);
+    color: var(--text-secondary);
+    border-right: 1px solid var(--border-color);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.8rem;
+    height: 100%;
+    z-index: 1;
+  }
+  
+  .line-number {
+    opacity: 0.5;
+    padding: 1px 5px;
+  }
+  
+  .window-content {
+    margin-left: 35px; /* Width of line numbers */
+    padding: 10px;
+    font-family: 'Fira Code', monospace;
+  }
+  
+  /* Code styling */
+  .code-header, .code-footer {
+    margin-bottom: 10px;
+    font-family: 'Fira Code', monospace;
+  }
+  
+  .code-comment {
+    color: var(--code-comment);
+  }
+  
+  .text-accent {
+    color: var(--accent-color);
+  }
+  
+  .terminal-header, .terminal-line {
+    font-family: 'Fira Code', monospace;
+    margin-bottom: 5px;
+  }
+  
+  .cursor {
+    animation: blink 1s infinite;
+  }
+  
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  
+  /* Skills styling */
+  .skill-progress {
+    height: 6px;
+    background-color: var(--strength-meter-bg);
+    overflow: hidden;
+  }
+  
+  .skill-progress-bar {
+    height: 100%;
+    background: var(--button-gradient-bg);
+    transition: width 0.5s ease;
+  }
+  
+  /* Projects styling */
+  .project-card {
+    background-color: var(--dark-bg);
+    border-radius: 6px;
+    padding: 10px;
+    border-left: 2px solid var(--accent-color);
+  }
+  
+  .tech-badge {
+    background-color: var(--accent-secondary);
+    color: var(--text-color);
+    font-size: 0.7rem;
+  }
+  
+  /* Activity styling */
+  .activity-item {
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 8px;
+  }
+  
+  .activity-timestamp {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.8rem;
+  }
+  
+  .activity-icon {
+    color: var(--accent-color);
+  }
+  
+  /* Goals styling */
+  .goal-item {
+    background-color: var(--dark-bg);
+    border-radius: 6px;
+    padding: 10px;
+    border-left: 2px solid var(--accent-secondary);
+  }
+  
+  .progress {
+    background-color: var(--strength-meter-bg);
+  }
+  
+  .progress-bar {
+    background: var(--button-gradient-bg);
+  }
+  
+  .form-check-input:checked {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+  }
+  
+  .form-check-input {
+    background-color: var(--dark-bg);
+    border-color: var(--accent-color);
+  }
+  
+  /* When sidebar is collapsed */
+  @media (max-width: 991.98px) {
+    .dashboard-container {
+      margin-left: 80px; /* Same as collapsed sidebar width */
+    }
+  }
+  
+  /* For smaller screens, adjust the margin */
+  @media (max-width: 767.98px) {
+    .dashboard-container {
+      margin-left: 0;
+      padding: 10px;
+    }
+    
+    .window-content {
+      margin-left: 30px;
+    }
+  }
+
+  /* Modal styling */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal-content {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+  }
+
+  .modal-content input,
+  .modal-content textarea {
+    width: 100%;
+    padding: 8px;
+    margin: 8px 0;
+    background: var(--dark-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    border-radius: 4px;
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+  }
+
+  .modal-actions button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+  }
+
+  .modal-actions button[type="submit"] {
+    background: var(--accent-color);
+    color: white;
+  }
+
+  .modal-actions button[type="button"] {
+    background: var(--dark-bg);
+    color: var(--text-color);
+  }
+
+  /* Activity Filters */
+.activity-filters {
+  margin-left: auto;
+  position: relative;
+}
+
+.filter-select {
+  position: relative;
+}
+
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--dark-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-toggle.active {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.filter-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 250px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 500;
+}
+
+.reset-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reset-btn:hover {
+  color: var(--accent-color);
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+}
+
+.filter-options {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-color) var(--dark-bg);
+}
+
+.filter-options::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filter-options::-webkit-scrollbar-track {
+  background: var(--dark-bg);
+}
+
+.filter-options::-webkit-scrollbar-thumb {
+  background-color: var(--accent-color);
+  border-radius: 6px;
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  margin-bottom: 0.25rem;
+}
+
+.filter-option:hover {
+  background: var(--dark-bg);
+}
+
+.filter-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.filter-option i {
+  width: 20px;
+  color: var(--accent-color);
+  font-size: 1rem;
+}
+
+.no-activities {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.no-activities i {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.achievement-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(45deg, var(--accent-color), var(--accent-secondary));
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: white;
+  font-weight: 500;
+}
