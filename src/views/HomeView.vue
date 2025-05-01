@@ -32,17 +32,15 @@
         </div>
 
         <!-- Technical Goals Section -->
-        <TechGoals :technicalGoals="CurrUser.technicalGoals || []" :userId="CurrUser.uid"/>
+        <TechGoals :technicalGoals="CurrUser.technicalGoals || []" userId="CurrUser.uid"/>
         
-        <!-- Skills Section -->
         <Skills :skills="CurrUser.skills || []" />
 
-        <!-- Projects Section -->
         <Projects :projects="CurrUser.projects || []" :userId="CurrUser.uid" />
 
-        <!-- Recent Activity Section -->
-        <RecentActivity :recentActivity="CurrUser.recentActivity || []" />
+        <RecentActivity :recentActivity="CurrUser.recentActivity || []" class="col-md-6" />
 
+        
       </div>
     </div>
   </template>

@@ -28,7 +28,10 @@
             />
             <div class="notification-text">
               <div class="notification-title">{{ notification.title }}</div>
-              <div class="notification-body">{{ notification.body }}</div>
+              <div class="notification-body">
+                {{ notification.body }}
+                <span v-if="notification.count > 1" class="counter">{{ notification.count }}</span>
+              </div>
             </div>
             <button class="notification-close" @click="removeNotification(notification.id)">×</button>
           </div>
@@ -184,20 +187,46 @@ const toggleTheme = () => {
 };
 
 // Add notification state
+const MAX_VISIBLE_NOTIFICATIONS = 5;
 const notifications = ref([]);
 
 // Add notification methods
 const addNotification = (notification) => {
   const id = Date.now();
-  notifications.value.push({
-    id,
-    title: notification.title || 'New Message',
-    body: notification.text || 'You have a new message',
-    icon: notification.senderPhoto || 'default-avatar-url',
-    timestamp: new Date()
-  });
+  
+  // Check if there's already a notification from the same sender/chat
+  const existingNotificationIndex = notifications.value.findIndex(
+    n => n.chatId === notification.data?.chatId
+  );
 
-  // Auto remove notification after 5 seconds
+  if (existingNotificationIndex !== -1) {
+    // Update existing notification counter
+    const existing = notifications.value[existingNotificationIndex];
+    if (!existing.count) existing.count = 1;
+    existing.count++;
+    existing.body = `${existing.count} new messages`;
+    // Move to top
+    const updated = notifications.value.splice(existingNotificationIndex, 1)[0];
+    notifications.value.unshift(updated);
+  } else {
+    // Add new notification at the beginning
+    notifications.value.unshift({
+      id,
+      title: notification.title || 'New Message',
+      body: notification.text || 'You have a new message',
+      icon: notification.senderPhoto || 'default-avatar-url',
+      timestamp: new Date(),
+      chatId: notification.data?.chatId,
+      count: 1
+    });
+
+    // Limit the number of visible notifications
+    if (notifications.value.length > MAX_VISIBLE_NOTIFICATIONS) {
+      notifications.value = notifications.value.slice(0, MAX_VISIBLE_NOTIFICATIONS);
+    }
+  }
+
+  // Auto remove after 5 seconds
   setTimeout(() => removeNotification(id), 5000);
 };
 
@@ -212,8 +241,21 @@ provide('notifications', {
   list: notifications
 });
 
+// Request notification permission
+const requestNotificationPermission = async () => {
+  try {
+    if (Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      console.log('Notification permission:', permission);
+    }
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+  }
+};
+
 // Request notification permission on mount
-onMounted(() => {
+onMounted(async () => {
+  await requestNotificationPermission();
   applyTheme();
   
   // Set up notification handler
@@ -221,7 +263,8 @@ onMounted(() => {
     addNotification({
       title: notification.title,
       text: notification.body,
-      senderPhoto: notification.icon
+      senderPhoto: notification.icon,
+      data: notification.data
     });
   });
 
@@ -230,11 +273,6 @@ onMounted(() => {
   const currentUser = auth.currentUser;
   if (currentUser) {
     unsubscribe = notificationService.listenToNotifications(currentUser.uid);
-  }
-
-  // Request notification permission
-  if (Notification.permission === 'default') {
-    Notification.requestPermission();
   }
 
   // Cleanup on unmount
@@ -255,16 +293,37 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-height: 80vh; /* Limit height to 80% of viewport height */
+  overflow-y: auto; /* Make it scrollable */
+  padding-right: 5px; /* Add padding for scrollbar */
+}
+
+/* Add custom scrollbar styling */
+.notifications-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notifications-container::-webkit-scrollbar-track {
+  background: var(--card-bg);
+  border-radius: 3px;
+}
+
+.notifications-container::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border-radius: 3px;
 }
 
 .notification-popup {
   background: var(--card-bg);
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--glow-bg);
+  box-shadow: 0 4px 12px var(--glow-fade);
   border-radius: 8px;
   padding: 12px;
   min-width: 300px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   animation: slideIn 0.3s ease-out;
+  opacity: 0.95; /* Add slight transparency */
+  backdrop-filter: blur(5px); /* Add blur effect */
 }
 
 .notification-content {
@@ -295,6 +354,16 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
+.notification-body .counter {
+  display: inline-block;
+  background: var(--accent-color);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.8em;
+  margin-left: 5px;
+}
+
 .notification-close {
   background: none;
   border: none;
@@ -313,6 +382,17 @@ onMounted(() => {
 .notification-leave-to {
   opacity: 0;
   transform: translateX(30px);
+}
+
+.notifications-container::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: linear-gradient(transparent, var(--card-bg));
+  pointer-events: none;
 }
 
 @keyframes slideIn {

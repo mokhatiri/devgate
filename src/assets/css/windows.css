@@ -42,7 +42,6 @@
     border: 1px solid var(--border-color);
     margin-bottom: 20px;
     height: 100%;
-    max-height: 100vh;
   }
   
   .window-header {
@@ -86,8 +85,7 @@
   
   .window-body {
     position: relative;
-    height: calc(100% - 40px); /* 40px is approx the header height */
-    overflow-y: auto;
+    overflow-y: auto important;
   }
   
   .line-numbers {

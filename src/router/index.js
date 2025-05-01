@@ -53,8 +53,12 @@ const routes = [
     path : '/communitydetails/:id',
     name :'communitydetails',
     component : () => import ('../views/CommunityDetails.vue')
-  } 
-
+  },
+  {
+    path: '/notifications',
+    name: 'notifications',
+    component: () => import('../views/NotificationsView.vue')
+  }
 
 ]
 

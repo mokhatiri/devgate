@@ -9,7 +9,10 @@ import {
   where, 
   orderBy, 
   addDoc, 
-  updateDoc 
+  updateDoc, 
+  writeBatch, 
+  getDocs, 
+  getDoc 
 } from 'firebase/firestore';
 import { getDatabase, ref, onValue, set, serverTimestamp, onDisconnect, off} from 'firebase/database';
 import { ref as vueRef, onUnmounted, onMounted } from 'vue';
@@ -170,17 +173,70 @@ export const NotificationType = {
   GROUP_INVITE: 'group_invite',
   MENTION: 'mention',
   REPLY: 'reply',
-  SYSTEM: 'system'
+  SYSTEM: 'system',
+  LIKE: 'like'
+};
+
+// Notification Preferences
+const NotificationPreferences = {
+  NONE: 'none',
+  IMPORTANT_ONLY: 'important',
+  ALL: 'all'
 };
 
 // Notification Handler
 export class NotificationService {
   constructor() {
     this.notificationCallback = null;
+    this.notificationSound = new Audio('@/assets/sound/notificationSound.wav'); // Add notification sound
+    this.unreadCount = vueRef(0);
+    this.setupUnreadCounter();
+    this.notificationQueue = [];
+    this.isProcessing = false;
+    this.minTimeBetweenNotifications = 1000; // 1 second
+    this.lastNotificationTime = 0;
+    this.pendingNotifications = [];
+    this.notificationTimeout = null;
+  }
+
+  async playNotificationSound() {
+    try {
+      await this.notificationSound.play();
+    } catch (error) {
+      console.warn('Could not play notification sound:', error);
+    }
   }
 
   setNotificationHandler(callback) {
     this.notificationCallback = callback;
+  }
+
+  async handlePendingNotifications() {
+    if (this.pendingNotifications.length === 0) return;
+
+    // If there's only one notification, show it normally
+    if (this.pendingNotifications.length === 1) {
+      const notification = this.pendingNotifications[0];
+      new Notification(notification.title, {
+        body: notification.body,
+        icon: notification.icon || '/default-avatar.png',
+        silent: false
+      });
+    } else {
+      // Show a grouped notification
+      new Notification('New Notifications', {
+        body: `You have ${this.pendingNotifications.length} new notifications`,
+        icon: '/default-avatar.png',
+        silent: false
+      });
+    }
+
+    // Play sound only once
+    await this.playNotificationSound();
+    
+    // Clear pending notifications
+    this.pendingNotifications = [];
+    this.notificationTimeout = null;
   }
 
   async sendNotification(notification) {
@@ -195,7 +251,6 @@ export class NotificationService {
         data = {}
       } = notification;
 
-      // Save notification to Firestore
       const notificationRef = await addDoc(
         collection(db, 'users', recipientId, 'notifications'),
         {
@@ -210,16 +265,19 @@ export class NotificationService {
         }
       );
 
-      // If recipient is not the current user, trigger notification
-      if (recipientId !== auth.currentUser?.uid && this.notificationCallback) {
-        this.notificationCallback({
-          id: notificationRef.id,
-          type,
-          title,
-          body,
-          icon,
-          data
-        });
+      // If recipient is not the current user, queue the notification
+      if (recipientId !== auth.currentUser?.uid && Notification.permission === 'granted') {
+        this.pendingNotifications.push({ title, body, icon });
+        
+        // Clear existing timeout if it exists
+        if (this.notificationTimeout) {
+          clearTimeout(this.notificationTimeout);
+        }
+
+        // Set a new timeout to show notifications after a delay
+        this.notificationTimeout = setTimeout(() => {
+          this.handlePendingNotifications();
+        }, 1000); // Wait 1 second to batch notifications
       }
 
       return notificationRef.id;
@@ -227,6 +285,17 @@ export class NotificationService {
       console.error('Error sending notification:', error);
       throw error;
     }
+  }
+
+  async sendSystemNotification(recipientId, title, body, data = {}) {
+    return this.sendNotification({
+      recipientId,
+      senderId: 'system',
+      type: NotificationType.SYSTEM,
+      title,
+      body,
+      data
+    });
   }
 
   // Listen to user's notifications
@@ -265,16 +334,33 @@ export class NotificationService {
     }
   }
 
+  async markMultipleAsRead(userId, query) {
+    try {
+      const snapshot = await getDocs(query);
+      if (snapshot.empty) return;
+
+      const batch = writeBatch(db);
+      snapshot.docs.forEach(doc => {
+        batch.update(doc.ref, { read: true });
+      });
+
+      await batch.commit();
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+      throw error;
+    }
+  }
+
   // Helper methods for different notification types
-  async sendMessageNotification(recipientId, message, sender) {
+  async sendMessageNotification(recipientId, message, sender, chatId, isGroup, groupName) {
     return this.sendNotification({
       recipientId,
       senderId: sender.id,
       type: NotificationType.MESSAGE,
-      title: `New message from ${sender.displayName}`,
+      title: `New message from user '${sender.displayName}'${isGroup ? ' in group: ' + groupName : ''}`,
       body: message.text || '[Image]',
       icon: sender.photoURL,
-      data: { messageId: message.id, chatId: message.chatId }
+      data: { messageId: message.id, chatId: chatId }
     });
   }
 
@@ -300,6 +386,96 @@ export class NotificationService {
       icon: sender.photoURL,
       data: { messageId: message.id, context }
     });
+  }
+
+  async sendLikeNotification(recipientId, message, sender) {
+    return this.sendNotification({
+      recipientId,
+      senderId: sender.id,
+      type: NotificationType.LIKE,
+      title: `${sender.displayName} liked your message`,
+      body: message.text,
+      icon: sender.photoURL,
+      data: { messageId: message.id }
+    });
+  }
+
+  setupUnreadCounter() {
+    if (!auth.currentUser) return;
+
+    const unreadQuery = query(
+      collection(db, 'users', auth.currentUser.uid, 'notifications'),
+      where('read', '==', false)
+    );
+
+    onSnapshot(unreadQuery, (snapshot) => {
+      this.unreadCount.value = snapshot.docs.length;
+      this.updateFavicon(this.unreadCount.value);
+    });
+  }
+
+  updateFavicon(count) {
+    // Update favicon with notification count
+    const favicon = document.querySelector('link[rel="icon"]');
+    if (count > 0) {
+      // Create dynamic favicon with count
+      // Implementation depends on your favicon strategy
+    }
+  }
+
+  async groupNotifications(notifications) {
+    const grouped = {};
+    
+    notifications.forEach(notification => {
+      const key = `${notification.type}-${notification.senderId}`;
+      if (!grouped[key]) {
+        grouped[key] = {
+          ...notification,
+          count: 1
+        };
+      } else {
+        grouped[key].count++;
+        if (notification.createdAt > grouped[key].createdAt) {
+          grouped[key].createdAt = notification.createdAt;
+        }
+      }
+    });
+
+    return Object.values(grouped);
+  }
+
+  async setUserNotificationPreferences(userId, preferences) {
+    await updateDoc(doc(db, 'users', userId), {
+      notificationPreferences: preferences
+    });
+  }
+
+  async shouldNotify(notification) {
+    const userDoc = await getDoc(doc(db, 'users', notification.recipientId));
+    const preferences = userDoc.data()?.notificationPreferences || NotificationPreferences.ALL;
+    
+    if (preferences === NotificationPreferences.NONE) return false;
+    if (preferences === NotificationPreferences.IMPORTANT_ONLY) {
+      return ['group_invite', 'mention'].includes(notification.type);
+    }
+    return true;
+  }
+
+  async processNotificationQueue() {
+    if (this.isProcessing || this.notificationQueue.length === 0) return;
+    
+    this.isProcessing = true;
+    while (this.notificationQueue.length > 0) {
+      const notification = this.notificationQueue.shift();
+      await this.showNotification(notification);
+      await new Promise(resolve => setTimeout(resolve, this.minTimeBetweenNotifications));
+    }
+    this.isProcessing = false;
+  }
+
+  queueNotification(notification) {
+    this.notificationQueue.push(notification);
+    this.processNotificationQueue();
   }
 }
 

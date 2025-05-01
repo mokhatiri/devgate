@@ -1,6 +1,6 @@
 <template>
-  <div class="col-md-6">
-    <div class="window">
+  <div class="recent-activity">
+    <div class="window" style="min-height: 350px;">
       <div class="window-header">
         <div class="window-dots">
           <span class="dot dot-red"></span>
@@ -205,7 +205,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped src="@/assets/css/windows.css">
-/* Filter styling with !important tags to ensure proper rendering */
 .activity-filters {
   margin-left: auto !important;
   position: relative !important;

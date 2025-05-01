@@ -643,20 +643,39 @@ function scrollToLastMessage(chatIndex) {
 }
 
 // Handle message notification
-async function handleMessageNotification(chat, message) {
-  if (message.senderId === currUserId) return;
-
+async function handleMessageNotification(chat, message, chatId) {
   const sender = {
     id: message.senderId,
     displayName: getUserName(message.senderId, chat),
     photoURL: getUserAvatar(message.senderId, chat)
   };
 
-  await notificationService.sendMessageNotification(
-    chat.entity.id,
-    message,
-    sender
-  );
+  if (chat.isGroup) {
+    // For group chats, send notification to all members except sender
+    const members = chat.entity.members || [];
+    const promises = members
+      .filter(memberId => memberId !== message.senderId)
+      .map(memberId => 
+        notificationService.sendMessageNotification(
+          memberId,
+          message,
+          sender,
+          chatId,
+          true, // isGroup flag
+          chat.entity.name // group name
+        )
+      );
+    
+    await Promise.all(promises);
+  } else {
+    // For direct messages, send to single recipient
+    await notificationService.sendMessageNotification(
+      chat.entity.id,
+      message,
+      sender,
+      chatId
+    );
+  }
 }
 
 // Fix the clearNotifications function
@@ -738,7 +757,7 @@ function toggleChat(entity, isGroup) {
 }
 
 // Handle new messages
-function handleNewMessages(chatIndex, messages) {
+async function handleNewMessages(chatIndex, messages) {
   const chat = activeChats.value[chatIndex];
   if (!chat) return;
 
@@ -768,9 +787,9 @@ function handleNewMessages(chatIndex, messages) {
     unreadMessages.value[chatKey] = newUnread;
   }
 
-  // If chat is focused, mark messages as read
+  // If chat is focused, mark messages as read immediately
   if (isCurrentlyFocused) {
-    markMessagesAsRead(chat);
+    await markMessagesAsRead(chat);
   }
 
   // Scroll if focused
@@ -808,18 +827,26 @@ function loadUserMessages(chatIndex) {
 
   const q = query(
     collection(db, "chats", chatId, "messages"),
-    orderBy("createdAt")
+    orderBy("createdAt", "asc")
   );
 
   const unsubscribe = onSnapshot(q, (snapshot) => {
     const messages = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
+      createdAt: doc.data().createdAt
     }));
+    
+    // Sort messages by timestamp
+    messages.sort((a, b) => {
+      const timeA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+      const timeB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+      return timeA - timeB;
+    });
+
     handleNewMessages(chatIndex, messages);
   });
 
-  // Pass the chat object and isGroup flag
   clearNotifications(chat, false);
   activeChats.value[chatIndex].unsubscribe = unsubscribe;
 }
@@ -842,18 +869,27 @@ function loadGroupMessages(chatIndex) {
 
   const q = query(
     collection(db, "groups", groupId, "messages"),
-    orderBy("createdAt")
+    orderBy("createdAt", "asc")
   );
 
   const unsubscribe = onSnapshot(q, (snapshot) => {
     const messages = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
+      createdAt: doc.data().createdAt
     }));
+    
+    // Sort messages by timestamp
+    messages.sort((a, b) => {
+      const timeA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+      const timeB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+      return timeA - timeB;
+    });
+
     handleNewMessages(chatIndex, messages);
   });
 
-  clearNotifications(chat.entity.id, true);
+  clearNotifications(chat, true);
   activeChats.value[chatIndex].unsubscribe = unsubscribe;
 }
 
@@ -871,16 +907,19 @@ async function sendMessage(chatIndex) {
   };
 
   let messageRef;
+  let wtvId;
   if (!chat.isGroup) {
     const chatId = [currUserId, chat.entity.id].sort().join("_");
+    wtvId = chatId;
     messageRef = await addDoc(collection(db, "chats", chatId, "messages"), message);
   } else {
     const groupId = chat.entity.id;
+    wtvId = groupId;
     messageRef = await addDoc(collection(db, "groups", groupId, "messages"), message);
   }
 
   message.id = messageRef.id;
-  await handleMessageNotification(chat, message);
+  await handleMessageNotification(chat, message, wtvId);
 
   activeChats.value[chatIndex].newMessage = "";
   nextTick(() => scrollToLastMessage(chatIndex));
@@ -1080,27 +1119,40 @@ function stopResizeWindow() {
 }
 
 async function setFocusedChat(index) {
+  // Add validation check for invalid index
+  if (index < 0 || index >= activeChats.value.length) {
+    console.warn('Invalid chat index:', index);
+    return;
+  }
+
   if (focusedChatIndex.value !== index) {
     focusedChatIndex.value = index;
     
     const chat = activeChats.value[index];
-    if (chat) {
-      // Update current chat type
-      currentChatType.value = {
-        isGroup: chat.isGroup,
-        chatId: chat.isGroup ? chat.entity.id : [currUserId, chat.entity.id].sort().join('_')
-      };
-
-      await updateLastReadTime(chat);
-      await clearNotifications(chat, chat.isGroup);
+    if (!chat) {
+      console.warn('Chat not found at index:', index);
+      return;
     }
 
-    // Move focused window to top (highest z-index)
-    const highestZ = Math.max(
-      ...activeChats.value.map((chat) => parseInt(chat.position.zIndex) || 1)
-    );
+    // Update current chat type
+    currentChatType.value = {
+      isGroup: chat.isGroup,
+      chatId: chat.isGroup ? chat.entity.id : [currUserId, chat.entity.id].sort().join('_')
+    };
 
-    activeChats.value[index].position.zIndex = highestZ + 1;
+    await updateLastReadTime(chat);
+    await clearNotifications(chat, chat.isGroup);
+
+    // Safely update z-index
+    if (chat.position) {
+      // Move focused window to top (highest z-index)
+      const highestZ = Math.max(
+        ...activeChats.value.map((c) => parseInt(c?.position?.zIndex) || 1)
+      );
+
+      chat.position.zIndex = highestZ + 1;
+    }
+
     scrollToLastMessage(index);
   }
 }
@@ -1116,10 +1168,29 @@ async function updateLastReadTime(chat) {
   const collectionPath = chat.isGroup ? 'groups' : 'chats';
   const lastReadRef = doc(db, collectionPath, chatId, 'lastRead', currUserId);
 
-  await setDoc(lastReadRef, {
+  // Get all unread notifications for this chat
+  const notificationsQuery = query(
+    collection(db, 'users', currUserId, 'notifications'),
+    where('type', '==', 'message'),
+    where('data.chatId', '==', chatId),
+    where('read', '==', false)
+  );
+
+  const notificationsSnapshot = await getDocs(notificationsQuery);
+  const batch = writeBatch(db);
+
+  // Mark all notifications as read in a batch
+  notificationsSnapshot.docs.forEach(doc => {
+    batch.update(doc.ref, { read: true });
+  });
+
+  // Update last read timestamp
+  batch.set(lastReadRef, {
     timestamp: new Date(),
     userId: currUserId
   });
+
+  await batch.commit();
 
   // Pass both parameters to clearNotifications
   await clearNotifications(chat, chat.isGroup);
