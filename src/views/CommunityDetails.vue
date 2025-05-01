@@ -19,6 +19,15 @@
         </div>
 
         <template v-else-if="community">
+          <!-- Community Image -->
+          <div class="section text-center" v-if="community.photoURL">
+            <img 
+              :src="community.photoURL" 
+              :alt="community.name"
+              class="community-image mb-3"
+            />
+          </div>
+
           <!-- Community Name Section -->
           <div class="section">
             <h1 class="code-font d-flex align-items-center">
@@ -260,5 +269,14 @@ function formatDate(timestamp) {
   justify-content: center;
   padding: 48px;
   text-align: center;
+}
+
+.community-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 2px solid var(--accent-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 </style>

@@ -54,6 +54,30 @@
                 </div>
               </div>
             </div>
+
+            <!-- Add Community Image -->
+            <div class="form-group mb-4">
+              <label class="code-comment mb-2">// Community Image</label>
+              <div class="d-flex">
+                <span class="code-property">image:</span>
+                <div class="flex-grow-1 ms-2">
+                  <div class="image-upload-container">
+                    <img 
+                      v-if="formData.photoURL"
+                      :src="formData.photoURL" 
+                      class="community-image mb-2" 
+                      alt="Community"
+                    />
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      class="form-control code-input" 
+                      @change="handleImageUpload"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -377,7 +401,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db, auth, CurrUser } from '@/firebase';
-
+import { handleImageUpload as uploadToCloudinary, getImageUrl } from '@/cloudinary';
 
 const emit = defineEmits(['close', 'updated', 'deleted']);
 
@@ -392,6 +416,7 @@ const community = ref(null);
 const formData = ref({
   name: '',
   bio: '',
+  photoURL: '',
   updatedAt: null
 });
 
@@ -438,7 +463,8 @@ async function fetchCommunity() {
       // Initialize form data
       formData.value = {
         name: community.value.name || '',
-        bio: community.value.bio || ''
+        bio: community.value.bio || '',
+        photoURL: community.value.photoURL || ''
       };
       
       // Fetch admin users
@@ -788,6 +814,19 @@ async function deleteCommunity() {
   }
 }
 
+// Handle image upload
+async function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    const publicId = await uploadToCloudinary(file);
+    formData.value.photoURL = getImageUrl(publicId);
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    alert('Failed to upload image. Please try again.');
+  }
+}
 </script>
 
 <style scoped>
@@ -1142,6 +1181,22 @@ async function deleteCommunity() {
   justify-content: center;
   height: 300px;
   width: 100%;
+}
+
+/* Community image styles */
+.community-image {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid var(--border-color);
+}
+
+.image-upload-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 /* Light mode specific colors */
