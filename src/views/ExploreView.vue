@@ -51,7 +51,8 @@
               @click="selectCommunity(community.id)"
               
               >
-              <div class="community-icon">
+              <img :src="community.photoURL" v-if="community.photoURL">
+              <div class="community-icon" v-else>
                 <i class="bi bi-braces"></i>
               </div>
               <div class="community-info">
@@ -384,6 +385,15 @@
   
   .community-item.active .code-comment {
     color: rgba(255, 255, 255, 0.7);
+  }
+  
+  /* Add this new style for the community image */
+  .community-item img {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    object-fit: cover;
+    margin-right: 12px;
   }
   
   .community-icon {
