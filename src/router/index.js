@@ -6,7 +6,7 @@ import { auth } from '../firebase'
 const routes = [
   {
     path: '/',
-    name: 'home',
+    name: 'dashboard',
     component: HomeView
   },
   {
@@ -58,8 +58,12 @@ const routes = [
     path: '/notifications',
     name: 'notifications',
     component: () => import('../views/NotificationsView.vue')
+  },
+  {
+    path: '/userprofile/:id',
+    name: 'userprofile',
+    component: HomeView
   }
-
 ]
 
 const router = createRouter({

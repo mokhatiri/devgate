@@ -1,5 +1,5 @@
 <template>
-  <div class="col-12"> <!-- Changed to full width -->
+  <div> 
     <div class="window">
       <div class="window-header">
         <div class="window-dots">

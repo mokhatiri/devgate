@@ -159,7 +159,8 @@ const trackProjectStatusChange = async (project, oldStatus) => {
 const trackSkillAddition = async (skill) => {
   const activity = {
     type: ActivityType.SKILL_ADD,
-    description: `Nouvelle compétence ajoutée: ${skill.name}`,
+    description: `Nouvelle compétence ajoutée: ${skill.name} de niveau ${skill.level}`,
+    progress: skill.percentage,
     timestamp: new Date().toISOString(),
   };
   await updateUserSection(

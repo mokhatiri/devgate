@@ -34,7 +34,7 @@
       <router-link 
         class="nav sidebar-link nav-link" 
         style="padding: 1rem 0.4rem;"
-        :to="'/userprofile'"
+        :to="'/'"
       >
       <div class="align-items-center gap-2 d-flex flex-row">
         <img
@@ -66,7 +66,6 @@
 
   // List of sidebar links
   const links = [
-    { name: "Dashboard", path: "/", icon: "bi bi-house" },
     { name: "Explore", path: "/explore", icon: "bi bi-search" },
     { name: "Chat", path: "/chat", icon: "bi bi-chat" },
     { name: "Notifications", path: "/notifications", icon: "bi bi-bell" },

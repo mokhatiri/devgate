@@ -188,7 +188,19 @@ const NotificationPreferences = {
 export class NotificationService {
   constructor() {
     this.notificationCallback = null;
-    this.notificationSound = new Audio('@/assets/sound/notificationSound.wav'); // Add notification sound
+    // Update audio path to use absolute path
+    this.notificationSound = new Audio('/sound/notificationSound.mp3');
+    // Initialize audio context and enable it on user interaction
+    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    this.audioEnabled = false;
+    // Add event listener for user interaction
+    document.addEventListener('click', () => {
+      if (!this.audioEnabled) {
+        this.audioContext.resume().then(() => {
+          this.audioEnabled = true;
+        });
+      }
+    });
     this.unreadCount = vueRef(0);
     this.setupUnreadCounter();
     this.notificationQueue = [];
@@ -201,7 +213,12 @@ export class NotificationService {
 
   async playNotificationSound() {
     try {
-      await this.notificationSound.play();
+      // Reset the audio to beginning
+      this.notificationSound.currentTime = 0;
+      // Check if audio is enabled before playing
+      if (this.audioEnabled) {
+        await this.notificationSound.play();
+      }
     } catch (error) {
       console.warn('Could not play notification sound:', error);
     }
@@ -373,18 +390,6 @@ export class NotificationService {
       body: `${inviter.displayName} invited you to join ${groupData.name}`,
       icon: groupData.photoURL,
       data: { groupId: groupData.id }
-    });
-  }
-
-  async sendMentionNotification(recipientId, message, sender, context) {
-    return this.sendNotification({
-      recipientId,
-      senderId: sender.id,
-      type: NotificationType.MENTION,
-      title: `${sender.displayName} mentioned you`,
-      body: message.text,
-      icon: sender.photoURL,
-      data: { messageId: message.id, context }
     });
   }
 

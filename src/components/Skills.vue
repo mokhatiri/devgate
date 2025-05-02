@@ -1,5 +1,5 @@
 <template>
-  <div class="col-md-6">
+  <div>
     <div class="window">
       <div class="window-header">
         <div class="window-dots">

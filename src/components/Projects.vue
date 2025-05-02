@@ -1,5 +1,5 @@
 <template>
-  <div class="col-md-6">
+  <div>
     <div class="window">
       <div class="window-header">
         <div class="window-dots">
@@ -69,7 +69,7 @@
                     {{ project.viewCount }} vues
                   </span>
                 </div>
-                <div class="like-indicator" @click="toggleLike(project, $event)" :title="isProjectLiked(project) ? 'Unlike' : 'Like'">
+                <div class="like-indicator" @click="toggleLike(project, $event)" :title="isProjectLiked(project) ? 'Ne plus aimer' : 'Aimer'">
                   <i :class="isProjectLiked(project) ? 'fas fa-heart' : 'far fa-heart'"></i>
                   <span>{{ project.likes?.length || 0 }}</span>
                 </div>
@@ -81,7 +81,7 @@
                   </span>
                   <span class="stat-item" v-if="project.isPublic">
                     <i class="fas fa-eye"></i>
-                    {{ project.viewCount || 0 }} views
+                    {{ project.viewCount || 0 }} vues
                   </span>
                 </div>
               </div>
@@ -244,7 +244,7 @@
           </div>
 
           <div v-if="selectedProject.githubUrl" class="detail-section">
-            <h3>GitHub Repository</h3>
+            <h3>Dépôt GitHub</h3>
             <a :href="selectedProject.githubUrl" 
                target="_blank" 
                class="github-link">
@@ -260,7 +260,7 @@
             </div>
             <div class="stat-item">
               <i class="fas fa-heart"></i>
-              {{ selectedProject.likes?.length || 0 }} likes
+              {{ selectedProject.likes?.length || 0 }} j'aime
             </div>
           </div>
         </div>
@@ -328,7 +328,7 @@ const projectData = ref({
     technologies: [],
     githubUrl: '',
     imageUrl: '',
-    status: 'In Progress',
+    status: 'En cours',
     isPublic: false,
     viewCount: 0,
     likes: [], // Array of user IDs who liked the project
@@ -381,7 +381,7 @@ const handleImageSelection = async (event) => {
             input.value = oldValue;
         } catch (error) {
             console.error('Error uploading image:', error);
-            alert('Error uploading image. Please try again.');
+            alert("Erreur lors du téléchargement de l'image. Veuillez réessayer.");
         }
     }
 };
@@ -458,15 +458,15 @@ const handleSubmit = async (event) => {
             await trackProjectStatusChange(projectWithMetadata, oldStatus);
             
             // Track completion if new status is "Completed"
-            if (projectData.value.status === 'Completed') {
+            if (projectData.value.status === 'Terminé') {
                 await trackProjectCompletion(projectWithMetadata);
             }
         }
         
         closeModal();
     } catch (error) {
-        console.error('Error saving project:', error);
-        alert('Error saving project. Please try again.');
+        console.error('Erreur lors de l\'enregistrement du projet:', error);
+        alert('Erreur lors de l\'enregistrement du projet. Veuillez réessayer.');
     }
 };
 
@@ -477,7 +477,7 @@ const editProject = (project) => {
 };
 
 const deleteProject = async () => {
-    if (!confirm('Are you sure you want to delete this project?')) return;
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce projet ?')) return;
     
     try {
         // Track project deletion before removing
@@ -491,8 +491,8 @@ const deleteProject = async () => {
         );
         closeModal();
     } catch (error) {
-        console.error('Error deleting project:', error);
-        alert('Error deleting project. Please try again.');
+        console.error('Erreur lors de la suppression du projet:', error);
+        alert('Erreur lors de la suppression du projet. Veuillez réessayer.');
     }
 };
 
@@ -599,7 +599,7 @@ const handleClickOutside = (event) => {
 
 const formatDate = (date) => {
   if (!date) return '';
-  return new Date(date).toLocaleDateString('en-US', {
+  return new Date(date).toLocaleDateString('fr-FR', {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
@@ -613,7 +613,7 @@ const handleStatusChange = async (event) => {
     if (oldStatus && oldStatus !== newStatus) {
         projectData.value.status = newStatus;
         
-        if (newStatus === 'Completed') {
+        if (newStatus === 'Terminé') {
             await trackProjectCompletion(projectData.value);
         }
         
