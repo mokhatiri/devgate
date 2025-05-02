@@ -2,7 +2,6 @@
     <div class="dashboard-container">
         <ProfileCard :userId = "$route.name == 'userprofile' ? $route.params.id : CurrUser.uid" />
 
-        <Graph/>
 
         <TechGoals :technicalGoals="CurrUser.technicalGoals || []"  :userId = "$route.name == 'userprofile' ? $route.params.id : CurrUser.uid" />
         
@@ -11,6 +10,8 @@
         <Projects :projects="CurrUser.projects || []"  :userId = "$route.name == 'userprofile' ? $route.params.id : CurrUser.uid" />
 
         <RecentActivity :recentActivity="CurrUser.recentActivity || []" v-if="$route.name == 'dashboard'" />
+
+        <Graphs :projects="CurrUser.projects || []" :skills="CurrUser.skills || []" :recentActivity="CurrUser.recentActivity"/>
     </div>
   </template>
   
@@ -23,6 +24,7 @@
   import RecentActivity from "@/components/RecentActivity.vue";
   import TechGoals from "@/components/TechGoals.vue";
   import ProfileCard from "@/components/ProfileCard.vue";
+  import Graphs from "@/components/Graphs.vue";
 
   onMounted(() => {
     const cursor = document.querySelector('.cursor');
@@ -32,6 +34,7 @@
       }, 500);
     }
   });
+
   </script>
 
   <style scoped src="@/assets/css/windows.css"></style>
