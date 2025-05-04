@@ -24,7 +24,7 @@
             
             <div v-if="showFilters" class="filter-dropdown">
               <div class="filter-header">
-                <span>Filtrer par type</span>
+                <span>Filter by type</span>
                 <button class="reset-btn" @click="resetFilters">
                   <i class="bi bi-arrow-counterclockwise"></i>
                 </button>
@@ -143,12 +143,12 @@ const setfiltersTonone = () => {
 
 const getFilterLabel = () => {
   if (selectedTypes.value.length === availableTypes.length) {
-    return 'Tous les types';
+    return 'All types';
   }
   if (selectedTypes.value.length === 0) {
-    return 'Aucun filtre';
+    return 'No filter';
   }
-  return `${selectedTypes.value.length} filtres`;
+  return `${selectedTypes.value.length} filters`;
 };
 
 const formatFilterLabel = (type) => {
@@ -182,7 +182,7 @@ const getProgressClass = (activity) => {
 
 const formatTimestamp = (timestamp) => {
   const date = new Date(timestamp);
-  return date.toLocaleString('fr-FR', {
+  return date.toLocaleString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
     day: '2-digit',

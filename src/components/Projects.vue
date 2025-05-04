@@ -63,13 +63,13 @@
                     <i class="fab fa-github"></i>
                   </a>
                 </div>
-                <div class="privacy-indicator" :title="project.isPublic ? 'Projet public' : 'Projet privé'">
+                <div class="privacy-indicator" :title="project.isPublic ? 'Public project' : 'Private project'">
                   <i :class="project.isPublic ? 'fas fa-globe' : 'fas fa-lock'"></i>
                   <span v-if="project.isPublic" class="view-count">
-                    {{ project.viewCount }} vues
+                    {{ project.viewCount }} views
                   </span>
                 </div>
-                <div class="like-indicator" @click="toggleLike(project, $event)" :title="isProjectLiked(project) ? 'Ne plus aimer' : 'Aimer'">
+                <div class="like-indicator" @click="toggleLike(project, $event)" :title="isProjectLiked(project) ? 'Unlike' : 'Like'">
                   <i :class="isProjectLiked(project) ? 'fas fa-heart' : 'far fa-heart'"></i>
                   <span>{{ project.likes?.length || 0 }}</span>
                 </div>
@@ -90,10 +90,10 @@
             <div v-if="filteredProjects.length === 0" class="no-projects">
               <i class="fas fa-folder-open"></i>
               <p v-if="props.userId === CurrUser.uid">
-                Vous n'avez pas encore de projets
+                You don't have any projects yet
               </p>
               <p v-else>
-                Aucun projet public disponible
+                No public projects available
               </p>
             </div>
           </div>
@@ -109,11 +109,11 @@
   <!-- Add/Edit Project Modal -->
   <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
     <div class="modal-content">
-      <h3>{{ isEditing ? 'Modifier' : 'Ajouter' }} un projet</h3>
+      <h3>{{ isEditing ? 'Edit' : 'Add' }} a project</h3>
       <form @submit.prevent="handleSubmit">
         <input v-model="projectData.name" 
                type="text" 
-               placeholder="Titre du projet" 
+               placeholder="Project title" 
                required>
 
         <textarea v-model="projectData.description" 
@@ -135,7 +135,7 @@
                    @keyup.enter.prevent="addTech"
                    @focus="showTechSuggestions = true"
                    @input="showTechSuggestions = true"
-                   placeholder="Ajouter une technologie">
+                   placeholder="Add a technology">
             <div v-if="showTechSuggestions && filteredTechnologies.length" 
                  class="tech-suggestions">
               <div v-for="tech in filteredTechnologies" 
@@ -150,10 +150,10 @@
 
         <input v-model="projectData.githubUrl" 
                type="url" 
-               placeholder="Lien GitHub">
+               placeholder="GitHub link">
 
         <div class="image-upload">
-          <label>Image du projet:</label>
+          <label>Project image:</label>
           <input type="file" 
                  @change="handleImageSelection" 
                  color="Var(--bg-color)"
@@ -168,19 +168,19 @@
           <label class="toggle-container" @click="projectData.isPublic = !projectData.isPublic">
             <span class="toggle-label">
               <i :class="projectData.isPublic ? 'fas fa-globe' : 'fas fa-lock'"></i>
-              {{ projectData.isPublic ? 'Public' : 'Privé' }}
-              <small>(cliquer pour changer)</small>
+              {{ projectData.isPublic ? 'Public' : 'Private' }}
+              <small>(click to change)</small>
             </span>
             <small class="privacy-hint">
               {{ projectData.isPublic 
-                 ? 'Ce projet sera visible par les autres utilisateurs' 
-                 : 'Ce projet ne sera visible que par vous' }}
+                 ? 'This project will be visible to other users' 
+                 : 'This project will only be visible to you' }}
             </small>
           </label>
         </div>
 
         <div class="form-group">
-          <label for="status">Statut:</label>
+          <label for="status">Status:</label>
           <select v-model="projectData.status" id="status" required @change="handleStatusChange">
             <option v-for="status in projectStatuses" :key="status" :value="status">
               {{ status }}
@@ -192,9 +192,9 @@
           <button v-if="isEditing" 
                   type="button" 
                   class="btn-danger" 
-                  @click="deleteProject">Supprimer</button>
-          <button type="button" @click="closeModal">Annuler</button>
-          <button type="submit">{{ isEditing ? 'Sauvegarder' : 'Ajouter' }}</button>
+                  @click="deleteProject">Delete</button>
+          <button type="button" @click="closeModal">Cancel</button>
+          <button type="submit">{{ isEditing ? 'Save' : 'Add' }}</button>
         </div>
       </form>
     </div>
@@ -212,11 +212,11 @@
         </div>
         <div class="project-meta">
           <span class="project-author">
-            <i class="fas fa-user"></i> {{ selectedProject.authorName || 'Utilisateur' }}
+            <i class="fas fa-user"></i> {{ selectedProject.authorName || 'User' }}
           </span>
           <span class="project-date">
             <i class="fas fa-calendar"></i> 
-            {{ new Date(selectedProject.createdAt).toLocaleDateString('fr-FR') }}
+            {{ new Date(selectedProject.createdAt).toLocaleDateString('en-GB') }}
           </span>
         </div>
       </div>
@@ -244,36 +244,36 @@
           </div>
 
           <div v-if="selectedProject.githubUrl" class="detail-section">
-            <h3>Dépôt GitHub</h3>
+            <h3>GitHub repository</h3>
             <a :href="selectedProject.githubUrl" 
                target="_blank" 
                class="github-link">
               <i class="fab fa-github"></i>
-              Voir sur GitHub
+              View on GitHub
             </a>
           </div>
 
           <div class="project-stats">
             <div class="stat-item">
               <i class="fas fa-eye"></i>
-              {{ selectedProject.viewCount || 0 }} vues
+              {{ selectedProject.viewCount || 0 }} views
             </div>
             <div class="stat-item">
               <i class="fas fa-heart"></i>
-              {{ selectedProject.likes?.length || 0 }} j'aime
+              {{ selectedProject.likes?.length || 0 }} likes
             </div>
           </div>
         </div>
       </div>
 
       <div class="modal-actions">
-        <button @click="showDetailModal = false">Fermer</button>
+        <button @click="showDetailModal = false">Close</button>
         <a v-if="selectedProject.githubUrl" 
            :href="selectedProject.githubUrl" 
            target="_blank" 
            class="btn-primary">
           <i class="fab fa-github"></i>
-          Voir le code
+          View code
         </a>
       </div>
     </div>
@@ -320,7 +320,7 @@ const availableTechnologies = [
     'Python', 'Django', 'Flask', 'Java', 'Spring Boot'
 ];
 
-const projectStatuses = ['En cours', 'Terminé', 'En attente'];
+const projectStatuses = ['In progress', 'Completed', 'Pending'];
 
 const projectData = ref({
     name: '',
@@ -328,7 +328,7 @@ const projectData = ref({
     technologies: [],
     githubUrl: '',
     imageUrl: '',
-    status: 'En cours',
+    status: 'In progress',
     isPublic: false,
     viewCount: 0,
     likes: [], // Array of user IDs who liked the project
@@ -381,7 +381,7 @@ const handleImageSelection = async (event) => {
             input.value = oldValue;
         } catch (error) {
             console.error('Error uploading image:', error);
-            alert("Erreur lors du téléchargement de l'image. Veuillez réessayer.");
+            alert("Error uploading image. Please try again.");
         }
     }
 };
@@ -409,7 +409,7 @@ const handleSubmit = async (event) => {
     
     // Validate GitHub URL if provided
     if (projectData.value.githubUrl && !isValidGitHubUrl(projectData.value.githubUrl)) {
-        alert('Le lien GitHub n\'est pas valide. Format attendu: https://github.com/username/repository');
+        alert('The GitHub link is not valid. Expected format: https://github.com/username/repository');
         return;
     }
     
@@ -458,15 +458,15 @@ const handleSubmit = async (event) => {
             await trackProjectStatusChange(projectWithMetadata, oldStatus);
             
             // Track completion if new status is "Completed"
-            if (projectData.value.status === 'Terminé') {
+            if (projectData.value.status === 'Completed') {
                 await trackProjectCompletion(projectWithMetadata);
             }
         }
         
         closeModal();
     } catch (error) {
-        console.error('Erreur lors de l\'enregistrement du projet:', error);
-        alert('Erreur lors de l\'enregistrement du projet. Veuillez réessayer.');
+        console.error('Error saving project:', error);
+        alert('Error saving project. Please try again.');
     }
 };
 
@@ -477,7 +477,7 @@ const editProject = (project) => {
 };
 
 const deleteProject = async () => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce projet ?')) return;
+    if (!confirm('Are you sure you want to delete this project?')) return;
     
     try {
         // Track project deletion before removing
@@ -491,8 +491,8 @@ const deleteProject = async () => {
         );
         closeModal();
     } catch (error) {
-        console.error('Erreur lors de la suppression du projet:', error);
-        alert('Erreur lors de la suppression du projet. Veuillez réessayer.');
+        console.error('Error deleting project:', error);
+        alert('Error deleting project. Please try again.');
     }
 };
 
@@ -505,7 +505,7 @@ const closeModal = () => {
         technologies: [],
         githubUrl: '',
         imageUrl: '',
-        status: 'En cours',
+        status: 'In progress',
         isPublic: false,
         viewCount: 0,
         likes: [],
@@ -517,9 +517,9 @@ const closeModal = () => {
 
 const getStatusClass = (status) => {
     switch(status) {
-        case 'En cours': return 'bg-primary';
-        case 'Terminé': return 'bg-success';
-        case 'En attente': return 'bg-warning';
+        case 'In progress': return 'bg-primary';
+        case 'Completed': return 'bg-success';
+        case 'Pending': return 'bg-warning';
         default: return 'bg-secondary';
     }
 };
@@ -599,7 +599,7 @@ const handleClickOutside = (event) => {
 
 const formatDate = (date) => {
   if (!date) return '';
-  return new Date(date).toLocaleDateString('fr-FR', {
+  return new Date(date).toLocaleDateString('en-GB', {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
@@ -613,7 +613,7 @@ const handleStatusChange = async (event) => {
     if (oldStatus && oldStatus !== newStatus) {
         projectData.value.status = newStatus;
         
-        if (newStatus === 'Terminé') {
+        if (newStatus === 'Completed') {
             await trackProjectCompletion(projectData.value);
         }
         
