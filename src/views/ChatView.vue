@@ -37,16 +37,16 @@
             </div>
             <div class="filter-options">
               <button 
+                :class="['terminal-btn-sm', { active: userFilter === 'friend' }]"
+                @click="userFilter = 'friend'"
+              >
+                FRIENDS
+              </button>
+              <button 
                 :class="['terminal-btn-sm', { active: userFilter === 'all' }]"
                 @click="userFilter = 'all'"
               >
                 ALL
-              </button>
-              <button 
-                :class="['terminal-btn-sm', { active: userFilter === 'following' }]"
-                @click="userFilter = 'following'"
-              >
-                FOLLOWING
               </button>
             </div>
           </div>
@@ -72,7 +72,7 @@
                     (chat) => !chat.isGroup && chat.entity.id === user.id
                   ),
                   'has-unread': hasUnreadMessagesForEntity(user.id, false),
-                  'is-following': user.followers?.includes(CurrUser.value?.uid)
+                  'is-friend': user.followers?.includes(CurrUser.value?.uid)
                 }"
               >
                 <div class="d-flex align-items-center">
@@ -89,7 +89,7 @@
                 </div>
                 <div class="status-indicators">
                   <div v-if="user.followers?.includes(CurrUser.value?.uid)" 
-                       class="following-indicator">
+                       class="friend-indicator">
                     ★
                   </div>
                   <div v-if="hasUnreadMessagesForEntity(user.id, false)" 
@@ -193,7 +193,7 @@
                 class="terminal-message"
                 :class="{ 'user-message': message.senderId === currUserId }"
               >
-                <div class="message-user-info">
+                <div class="message-user-info" @click="$router.push({name : 'userprofile' , params : {id : message.senderId}})">
                   <img
                     :src="getUserAvatar(message.senderId, chat)"
                     class="message-avatar"
@@ -403,6 +403,7 @@
 <script setup>
 import { ref, onMounted, watch, onUnmounted, nextTick, computed } from "vue";
 import { db, auth, notificationService, NotificationType } from "@/firebase";
+import { CurrUser } from "@/firebase"
 import { getAccountsInfoBy } from "@/Functions";
 import {
   collection,
@@ -416,8 +417,7 @@ import {
   where,
   getDocs,
   writeBatch,
-  getDoc,
-  setDoc
+  getDoc
 } from "firebase/firestore";
 import { Modal } from "bootstrap";
 import OnlineDot from "@/components/OnlineDot.vue";
@@ -479,7 +479,7 @@ const selectedGroup = ref(null);
 
 // Search and filter controls
 const searchQuery = ref("");
-const userFilter = ref("all");
+const userFilter = ref("friend");
 
 // Get a unique key for each chat for tracking unread messages
 function getUnreadKey(chat) {
@@ -506,7 +506,7 @@ const filteredUsers = computed(() => {
     // Following filter
     const matchesFilter = 
       userFilter.value === 'all' || 
-      (userFilter.value === 'following' && user.followers?.includes(CurrUser.value?.uid));
+      (userFilter.value === 'friend' && user.friends?.includes(CurrUser.value?.uid));
 
     return matchesSearch && matchesFilter;
   });
@@ -1855,6 +1855,7 @@ function setupGroupInviteListener() {
   display: flex;
   align-items: center;
   margin-bottom: 4px;
+  cursor: pointer;
 }
 
 .message-avatar {
@@ -2204,13 +2205,13 @@ function setupGroupInviteListener() {
   color: var(--dark-bg);
 }
 
-.following-indicator {
+.friend-indicator {
   color: var(--accent-color);
   font-size: 0.9em;
   margin-right: 0.5rem;
 }
 
-.terminal-list-item.is-following {
+.terminal-list-item.is-friend {
   border-left: 2px solid var(--accent-color);
 }
 

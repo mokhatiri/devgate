@@ -26,6 +26,17 @@
             </div>
           </div>
         </div>
+        
+        <!-- Add Friend Button (Only show if not current user and not in edit mode) -->
+        <button 
+          v-if="Notfriend && !editMode" 
+          class="add-friend-btn"
+          @click="addFriend"
+          title="Add Friend"
+        >
+          <i class="bi bi-person-plus-fill me-2"></i>
+          <span>Add Friend</span>
+        </button>
       </div>
   
       <!-- Profile Information -->
@@ -125,7 +136,7 @@
   <script setup>
   import { ref, computed, onMounted, watch } from 'vue';
   import { db, auth } from '@/firebase';
-  import { doc, getDoc, updateDoc } from 'firebase/firestore';
+  import { arrayUnion, doc, getDoc, updateDoc} from 'firebase/firestore';
   import { handleImageUpload as uploadToCloudinary, getImageUrl } from "@/cloudinary";
   
   const props = defineProps({
@@ -159,6 +170,11 @@
   const isCurrentUser = computed(() => {
     return auth.currentUser && auth.currentUser.uid === props.userId;
   });
+
+  const Notfriend = computed(() =>{
+      return !isCurrentUser.value && !userData.value.friends?.includes(auth.currentUser.uid);
+
+  })
   
   const bannerStyle = computed(() => {
     if (userData.value && userData.value.bannerURL) {
@@ -323,6 +339,25 @@
       });
     } catch (error) {
       return 'Unknown date';
+    }
+  }
+  
+  // Add Friend Button Functionality
+  async function addFriend() {
+    const userRef = doc(db , "users" , props.userId);
+    const authUserRef = doc(db , "users" , auth.currentUser.uid);
+    try{
+    await updateDoc(userRef , {friends : arrayUnion(auth.currentUser.uid)})
+    await updateDoc(authUserRef , { friends : arrayUnion(props.userId) })
+    if (userData.value.friends){
+      userData.value.friends.push(auth.currentUser.uid)
+    }
+    else{
+      userData.value.friends = [auth.currentUser.uid]
+    }
+    }
+    catch(e){
+      alert("Something went wrong, try again!")
     }
   }
   </script>
@@ -1170,5 +1205,77 @@
   pointer-events: none;
   mix-blend-mode: overlay;
   border-radius: 12px;
+}
+
+/* Add Friend Button Styling */
+.add-friend-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-secondary) 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(4px);
+  font-family: 'Fira Code', monospace;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.add-friend-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 
+    0 6px 15px rgba(var(--accent-color-rgb), 0.4),
+    0 0 0 2px rgba(var(--accent-color-rgb), 0.2);
+}
+
+.add-friend-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(var(--accent-color-rgb), 0.3);
+}
+
+.add-friend-btn i {
+  font-size: 1.1rem;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.4));
+}
+
+/* Position adjustment when both settings and add friend buttons appear */
+@media (max-width: 576px) {
+  .add-friend-btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+  
+  .add-friend-btn i {
+    font-size: 1rem;
+  }
+}
+
+/* Handle specific responsive scenarios */
+@media (max-width: 768px) {
+  .add-friend-btn {
+    bottom: 15px;
+    top: auto;
+    right: 15px;
+  }
+}
+
+/* Animation for the button */
+@keyframes friendBtnPulse {
+  0% { box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0.5); }
+  70% { box-shadow: 0 0 0 10px rgba(var(--accent-color-rgb), 0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0); }
+}
+
+.add-friend-btn:hover {
+  animation: friendBtnPulse 1.5s infinite;
 }
   </style>

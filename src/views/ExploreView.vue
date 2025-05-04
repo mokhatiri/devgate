@@ -153,19 +153,31 @@
   console.log("Current User:", currentUser.value);
   
   const { filteredAccounts, unsubscribe } = getAccountsInfoBy({});
-  
+
   const filteredUsers = computed(() => {
-    return filteredAccounts.value.filter((user) => {
-      const userName = user.name || user.displayName || "";
-      const userUsername = user.username || user.id || "";
-      
-      const matchesSearch =
-        userName.toLowerCase().includes(userSearch.value.toLowerCase()) ||
-        userUsername.toLowerCase().includes(userSearch.value.toLowerCase());
-      const matchesFriendsOnly = !friendsOnly.value || user.isFriend;
-      return matchesSearch && matchesFriendsOnly;
-    });
+  return filteredAccounts.value.filter((user) => {
+    // Get username and display name for search filtering
+    const userName = user.name || user.displayName || "";
+    const userUsername = user.username || user.id || "";
+    
+    // Check if the user matches the search query
+    const matchesSearch =
+      userName.toLowerCase().includes(userSearch.value.toLowerCase()) ||
+      userUsername.toLowerCase().includes(userSearch.value.toLowerCase());
+    
+    // Check if the user is a friend of the current user
+    const isFriend = currentUser.value && currentUser.value.friends && 
+                    Array.isArray(currentUser.value.friends) && 
+                    currentUser.value.friends.includes(user.id);
+    
+    // Apply filters
+    const matchesFriendsOnly = !friendsOnly.value || isFriend;
+    
+    return matchesSearch && matchesFriendsOnly;
   });
+});
+  
+  
   
   const filteredCommunities = computed(() => {
     return communities.value.filter((community) =>

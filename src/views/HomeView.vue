@@ -1,14 +1,15 @@
 <template>
     <div class="dashboard-container">
+      
         <ProfileCard :userId = "$route.name == 'userprofile' ? $route.params.id : CurrUser.uid" />
 
-        <TechGoals  :userId = "$route.name == 'userprofile' ? $route.params.id : CurrUser.uid" />
+        <TechGoals :technicalGoals="CurrUser.technicalGoals || []"  :userId = "$route.name == 'userprofile' ? $route.params.id : CurrUser.uid" />
         
-        <Skills :userId = "$route.name == 'userprofile' ? $route.params.id : CurrUser.uid"/>
+        <Skills :skills="CurrUser.skills || []" :userId = "$route.name == 'userprofile' ? $route.params.id : CurrUser.uid"/>
 
-        <Projects  :userId = "$route.name == 'userprofile' ? $route.params.id : CurrUser.uid" />
+        <Projects :projects="CurrUser.projects || []"  :userId = "$route.name == 'userprofile' ? $route.params.id : CurrUser.uid" />
 
-        <RecentActivity v-if="$route.name == 'dashboard'" />
+        <RecentActivity :recentActivity="CurrUser.recentActivity || []" v-if="$route.name == 'dashboard'" />
 
         <Graphs :projects="CurrUser.projects || []" :skills="CurrUser.skills || []" :recentActivity="CurrUser.recentActivity"/>
     </div>
