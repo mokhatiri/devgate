@@ -8,7 +8,7 @@
           <span class="dot dot-green"></span>
         </div>
         <h2 class="window-title">skills.json</h2>
-        <AddButton @click="showAddSkillModal = true" />
+        <AddButton @click="showAddSkillModal = true" v-if="userId == CurrUser.uid" />
       </div>
       <div class="window-body p-4">
         <div class="line-numbers">
@@ -123,6 +123,10 @@ const props = defineProps({
         type: Array,
         required: true,
         default: () => []
+    },
+    userId: {
+        type: Array,
+        required: true
     }
 });
 

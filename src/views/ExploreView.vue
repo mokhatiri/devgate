@@ -124,7 +124,7 @@
                 alt="Profile" 
                 class="user-avatar"
               />
-              <div class="user-info">
+              <div class="user-info" @click="$router.push({name : 'userprofile', params : { id : user.id}} )">
                 <div class="user-name code-font">{{ user.name || user.displayName }}</div>
                 <div class="user-username code-comment">@{{ user.username || user.id.substring(0, 8) }}</div>
               </div>
