@@ -72,7 +72,7 @@
           <div v-if="!editMode">
             <h2 class="profile-name code-font">{{ userData.name || 'Loading...' }}</h2>
             <div class="profile-username code-comment">@{{ userData.username || 'username' }}</div>
-            <div class="profile-bio">{{ userData.bio || 'No bio available' }}</div>
+            <div class="profile-bio">{{ userData.bio}}</div>
             
             <div class="profile-stats">
               <div class="stat-item">
