@@ -47,9 +47,6 @@
       </div>
       </router-link>
       <nav class="nav flex-column">
-      <router-link to="/settings" class="nav-link sidebar-link">
-      <i class="bi bi-gear me-2" ></i> <span class="text-appear" :class="{invisible : isCollapsed}">Settings</span>
-      </router-link>
       <div class="nav-link sidebar-link" @click="auth.signOut()">
       <i class="bi bi-box-arrow-right me-2"></i> <span class="text-appear" :class="{invisible : isCollapsed}">Logout</span>
       </div>
