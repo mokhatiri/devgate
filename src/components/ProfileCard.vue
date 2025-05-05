@@ -1,7 +1,7 @@
 <template>
     <div class="terminal-panel profile-card mb-4">
-      <!-- Banner Section -->
-      <div class="profile-banner" :style="bannerStyle">
+      <!-- Rest of your template remains the same -->
+      <div class="profile-banner" :style="bannerStyle" @click="previewImage(userData.bannerURL)">
         <button 
           v-if="isCurrentUser" 
           class="settings-btn"
@@ -42,7 +42,12 @@
       <!-- Profile Information -->
       <div class="profile-content">
         <div class="profile-image-container">
-          <img :src="userData.photoURL || defaultAvatar" alt="Profile" class="profile-image" />
+          <img 
+            :src="userData.photoURL || defaultAvatar" 
+            alt="Profile" 
+            class="profile-image" 
+            @click="previewImage(userData.photoURL || defaultAvatar)"
+          />
           <div v-if="editMode" class="image-upload-overlay" @click="triggerImageUpload('profile')">
             <i class="bi bi-camera-fill"></i>
             <span>Change</span>
@@ -130,14 +135,39 @@
         accept="image/*" 
         style="display: none"
       />
+
+      <!-- Image Cropper Modal -->
+      <div v-if="showCropper" class="cropper-modal">
+        <div class="cropper-container">
+          <Cropper
+            ref="cropper"
+            class="cropper"
+            :src="cropperImage"
+            :stencil-props="{
+              aspectRatio: cropperType === 'banner' ? 16/9 : 1
+            }"
+            @change="onChange"
+          />
+          <div class="cropper-controls">
+            <button class="btn btn-terminal" @click="cancelCrop">
+              <span class="code-font">cancel()</span>
+            </button>
+            <button class="btn save-btn" @click="saveCrop">
+              <span class="code-font">save()</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </template>
   
   <script setup>
-  import { ref, computed, onMounted, watch } from 'vue';
+  import { ref, computed, watch } from 'vue';
   import { db, auth } from '@/firebase';
   import { arrayUnion, doc, getDoc, updateDoc} from 'firebase/firestore';
   import { handleImageUpload as uploadToCloudinary, getImageUrl } from "@/cloudinary";
+  import { Cropper } from 'vue-advanced-cropper';
+  import 'vue-advanced-cropper/dist/style.css';
   
   const props = defineProps({
     userId: {
@@ -146,6 +176,8 @@
     }
   });
   
+  const emit = defineEmits(['showPreview']); // Add this line
+
   // Default profile values
   const defaultAvatar = 'https://res.cloudinary.com/duwrqxvey/image/upload/v1745689776/default-avatar-icon-of-social-media-user-vector_zoyryv.jpg';
   const defaultBanner = '#181818'; // Dark background if no banner
@@ -165,6 +197,16 @@
     profile: 0,
     banner: 0
   });
+  
+  // Add these new refs
+  const showCropper = ref(false);
+  const cropperImage = ref('');
+  const cropperType = ref('');
+  const cropperCoordinates = ref(null);
+  const cropper = ref(null);
+  
+  // Add this with your other refs
+  const isUploading = ref(false);
   
   // Computed properties
   const isCurrentUser = computed(() => {
@@ -214,6 +256,11 @@
   }
   
   function toggleEditMode() {
+    if (isUploading.value) {
+      alert('Please wait for the upload to complete');
+      return;
+    }
+    
     if (editMode.value) {
       // Closing edit mode - discard changes
       editMode.value = false;
@@ -258,6 +305,7 @@
   }
   
   function triggerImageUpload(type) {
+    cropperType.value = type;
     if (type === 'profile') {
       profileImageInput.value.click();
     } else if (type === 'banner') {
@@ -293,36 +341,13 @@
     if (!file) return;
     
     try {
-      // Show progress indicator
-      const progressInterval = simulateProgressUpdates(type);
-      
-      // Upload image to Cloudinary
-      const publicId = await uploadToCloudinary(file);
-      const imageUrl = getImageUrl(publicId);
-      
-      // Update in Firestore
-      const userRef = doc(db, "users", props.userId);
-      
-      if (type === 'profile') {
-        await updateDoc(userRef, { photoURL: imageUrl });
-        userData.value.photoURL = imageUrl;
-      } else if (type === 'banner') {
-        await updateDoc(userRef, { bannerURL: imageUrl });
-        userData.value.bannerURL = imageUrl;
-      }
-      
-      // Complete the progress bar
-      clearInterval(progressInterval);
-      uploadProgress.value[type] = 100;
-      
-      // Reset progress after a delay
-      setTimeout(() => {
-        uploadProgress.value[type] = 0;
-      }, 800);
+      // Create URL for cropper
+      cropperImage.value = URL.createObjectURL(file);
+      cropperType.value = type;
+      showCropper.value = true;
     } catch (error) {
-      console.error(`Error uploading ${type} image:`, error);
-      uploadProgress.value[type] = 0;
-      alert(`Failed to upload ${type} image. Please try again.`);
+      console.error(`Error preparing image for crop:`, error);
+      alert(`Failed to prepare image for cropping. Please try again.`);
     }
   }
   
@@ -339,6 +364,91 @@
       });
     } catch (error) {
       return 'Unknown date';
+    }
+  }
+  
+  function previewImage(imageUrl) {
+    if (!editMode.value && imageUrl) {
+      emit('showPreview', imageUrl);
+    }
+  }
+  
+  function onChange({ coordinates, canvas }) {
+    cropperCoordinates.value = coordinates;
+  }
+  
+  function cancelCrop() {
+    showCropper.value = false;
+    cropperImage.value = '';
+    cropperCoordinates.value = null;
+  }
+  
+  async function saveCrop() {
+    if (!cropperCoordinates.value || !cropper.value) return;
+    
+    isUploading.value = true;
+    
+    try {
+      // Get the canvas from the cropper
+      const canvas = cropper.value.getResult().canvas;
+      
+      // Convert canvas to File object
+      const blob = await new Promise(resolve => {
+        canvas.toBlob(resolve, 'image/jpeg', 0.9);
+      });
+      
+      // Create a File object with the blob
+      const croppedFile = new File([blob], `${cropperType.value}-image.jpg`, {
+        type: 'image/jpeg',
+      });
+
+      // Show progress indicator
+      const progressInterval = simulateProgressUpdates(cropperType.value);
+
+      // Upload to Cloudinary using your existing function
+      const publicId = await uploadToCloudinary(croppedFile);
+      
+      if (!publicId) {
+        throw new Error('Failed to get public ID from Cloudinary');
+      }
+
+      // Get the URL using your getImageUrl function
+      const imageUrl = getImageUrl(publicId);
+
+      // Update Firestore
+      const userRef = doc(db, "users", props.userId);
+      const updateData = {
+        [`${cropperType.value}Dimensions`]: cropperCoordinates.value
+      };
+      
+      if (cropperType.value === 'profile') {
+        updateData.photoURL = imageUrl;
+        userData.value.photoURL = imageUrl;
+      } else if (cropperType.value === 'banner') {
+        updateData.bannerURL = imageUrl;
+        userData.value.bannerURL = imageUrl;
+      }
+      
+      await updateDoc(userRef, updateData);
+      
+      // Complete the progress bar
+      clearInterval(progressInterval);
+      uploadProgress.value[cropperType.value] = 100;
+      
+      // Reset states after successful upload
+      setTimeout(() => {
+        uploadProgress.value[cropperType.value] = 0;
+        isUploading.value = false;
+      }, 800);
+      
+      // Close cropper
+      cancelCrop();
+      
+    } catch (error) {
+      console.error('Error in image upload process:', error);
+      uploadProgress.value[cropperType.value] = 0;
+      isUploading.value = false;
+      alert(`Upload failed: ${error.message}`);
     }
   }
   
@@ -386,16 +496,18 @@
 }
 
 .profile-banner {
-  height: 220px; /* Increased height for better presence */
+  height: 220px;
   background-size: cover;
   background-position: center;
   position: relative;
   transition: all 0.3s ease;
-  /* Add object-fit properties for better image handling */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  width: 100%;
+}
+
+.banner-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .profile-banner::after {
@@ -1277,5 +1389,46 @@
 
 .add-friend-btn:hover {
   animation: friendBtnPulse 1.5s infinite;
+}
+
+/* Add these new styles */
+.cropper-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.cropper-container {
+  width: 90%;
+  max-width: 900px;
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.cropper {
+  height: 400px;
+  background-color: #262626;
+  border-radius: 8px;
+}
+
+.cropper-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* Add hover cursor for clickable images */
+.profile-image,
+.profile-banner {
+  cursor: pointer;
 }
   </style>
