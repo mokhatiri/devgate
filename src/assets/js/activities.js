@@ -51,7 +51,7 @@ export const ActivityIcons = {
 const trackSkillProgress = async (skill, oldLevel) => {
   const activity = {
     type: ActivityType.SKILL_PROGRESS,
-    description: `Progression en ${skill.name}: ${skill.level}`,
+    description: `Progress in ${skill.name}: ${skill.level}`,
     timestamp: new Date().toISOString(),
     progress: skill.percentage,
   };
@@ -68,9 +68,9 @@ const trackSkillProgress = async (skill, oldLevel) => {
 const trackGoalAchievement = async (goal) => {
   const activity = {
     type: ActivityType.GOAL_REACHED,
-    description: `Objectif atteint: ${goal.title}`,
+    description: `Goal achieved: ${goal.title}`,
     timestamp: new Date().toISOString(),
-    achievementText: `🎉 Félicitations! Objectif complété en ${calculateDuration(
+    achievementText: `🎉 Congratulations! Goal completed in ${calculateDuration(
       goal
     )}`
   };
@@ -87,7 +87,7 @@ const trackGoalAchievement = async (goal) => {
 const trackProjectAddition = async (project) => {
   const activity = {
     type: ActivityType.PROJECT_ADD,
-    description: `Nouveau projet créé: ${project.name}`,
+    description: `New project created: ${project.name}`,
     timestamp: new Date().toISOString(),
   };
 
@@ -103,7 +103,7 @@ const trackProjectAddition = async (project) => {
 const trackGoalMilestone = async (goal, milestone) => {
   const activity = {
     type: ActivityType.GOAL_MILESTONE,
-    description: `Étape complétée: ${milestone.title} (${goal.title})`,
+    description: `Milestone completed: ${milestone.title} (${goal.title})`,
     timestamp: new Date().toISOString(),
     progress: Math.round(
       (goal.milestones.filter((m) => m.completed).length /
@@ -126,9 +126,9 @@ const trackStreakAchievement = async (goal) => {
   if (milestones.includes(goal.streak)) {
     const activity = {
       type: ActivityType.STREAK_ACHIEVEMENT,
-      description: `${goal.streak} jours de streak sur ${goal.title}!`,
+      description: `${goal.streak} day streak on ${goal.title}!`,
       timestamp: new Date().toISOString(),
-      achievementText: `🔥 ${goal.streak} jours consécutifs!`,
+      achievementText: `🔥 ${goal.streak} consecutive days!`,
     };
     await updateUserSection(
       CurrUser.value.uid,
@@ -143,7 +143,7 @@ const trackStreakAchievement = async (goal) => {
 const trackProjectStatusChange = async (project, oldStatus) => {
   const activity = {
     type: ActivityType.PROJECT_STATUS_CHANGE,
-    description: `Projet "${project.name}" est passé de ${oldStatus} à ${project.status}`,
+    description: `Project "${project.name}" changed from ${oldStatus} to ${project.status}`,
     timestamp: new Date().toISOString(),
   };
 
@@ -159,7 +159,7 @@ const trackProjectStatusChange = async (project, oldStatus) => {
 const trackSkillAddition = async (skill) => {
   const activity = {
     type: ActivityType.SKILL_ADD,
-    description: `Nouvelle compétence ajoutée: ${skill.name} de niveau ${skill.level}`,
+    description: `New skill added: ${skill.name} at level ${skill.level}`,
     progress: skill.percentage,
     timestamp: new Date().toISOString(),
   };
@@ -174,7 +174,7 @@ const trackSkillAddition = async (skill) => {
 const trackGoalAddition = async (goal) => {
   const activity = {
     type: ActivityType.GOAL_ADD,
-    description: `Nouvel objectif ajouté: ${goal.title}`,
+    description: `New goal added: ${goal.title}`,
     timestamp: new Date().toISOString(),
   };
   await updateUserSection(
@@ -189,7 +189,7 @@ const trackGoalAddition = async (goal) => {
 const trackSkillDeletion = async (skill) => {
   const activity = {
     type: ActivityType.SKILL_DELETE,
-    description: `Compétence supprimée: ${skill.name}`,
+    description: `Skill deleted: ${skill.name}`,
     timestamp: new Date().toISOString(),
   };
   await updateUserSection(
@@ -204,7 +204,7 @@ const trackSkillDeletion = async (skill) => {
 const trackProjectUpdate = async (project, changes) => {
   const activity = {
     type: ActivityType.PROJECT_UPDATE,
-    description: `Projet "${project.name}" mis à jour`,
+    description: `Project "${project.name}" updated`,
     timestamp: new Date().toISOString(),
     changes: changes, // Array of changed fields
   };
@@ -220,9 +220,9 @@ const trackProjectUpdate = async (project, changes) => {
 const trackProjectCompletion = async (project) => {
   const activity = {
     type: ActivityType.PROJECT_COMPLETED,
-    description: `Projet "${project.name}" terminé`,
+    description: `Project "${project.name}" completed`,
     timestamp: new Date().toISOString(),
-    achievementText: "🎉 Projet terminé avec succès!",
+    achievementText: "🎉 Project successfully completed!",
   };
   await updateUserSection(
     CurrUser.value.uid,
@@ -236,7 +236,7 @@ const trackProjectCompletion = async (project) => {
 const trackProjectDeletion = async (project) => {
   const activity = {
     type: ActivityType.PROJECT_DELETE,
-    description: `Projet "${project.name}" supprimé`,
+    description: `Project "${project.name}" deleted`,
     timestamp: new Date().toISOString(),
   };
   await updateUserSection(
@@ -251,7 +251,7 @@ const trackProjectDeletion = async (project) => {
 const trackGoalUpdate = async (goal, changes) => {
   const activity = {
     type: ActivityType.GOAL_UPDATE,
-    description: `Objectif "${goal.title}" mis à jour`,
+    description: `Goal "${goal.title}" updated`,
     timestamp: new Date().toISOString(),
     changes: changes, // Array of changed fields
   };
@@ -267,7 +267,7 @@ const trackGoalUpdate = async (goal, changes) => {
 const trackGoalDeletion = async (goal) => {
   const activity = {
     type: ActivityType.GOAL_DELETE,
-    description: `Objectif "${goal.title}" supprimé`,
+    description: `Goal "${goal.title}" deleted`,
     timestamp: new Date().toISOString(),
   };
   await updateUserSection(
@@ -285,9 +285,9 @@ const calculateDuration = (goal) => {
   const end = new Date(goal.completedAt || new Date());
   const days = Math.floor((end - start) / (1000 * 60 * 60 * 24));
 
-  if (days === 0) return "moins d'un jour";
-  if (days === 1) return "1 jour";
-  return `${days} jours`;
+  if (days === 0) return "less than a day";
+  if (days === 1) return "1 day";
+  return `${days} days`;
 };
 
 export {

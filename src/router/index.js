@@ -1,7 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import { onAuthStateChanged } from 'firebase/auth'
-import { auth } from '../firebase'
+import { auth, db } from '../firebase'
+import { doc, getDoc } from 'firebase/firestore'
 
 const routes = [
   {
@@ -71,23 +72,73 @@ const router = createRouter({
   routes
 })
 
-// if the user isn't auth reroute him to login, and only allow him to enter login, signup, forgot-password
-onAuthStateChanged(auth, (user) => {
-  if (!user && router.currentRoute.value.name !== 'login' && router.currentRoute.value.name !== 'signup' && router.currentRoute.value.name !== 'forgot-password') {
-    router.push({ name: 'login' })
+// Function to check if user exists in Firestore
+async function checkUserExists(uid) {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', uid))
+    return userDoc.exists()
+  } catch (error) {
+    console.error('Error checking user existence:', error)
+    return false
+  }
+}
+
+const publicRoutes = ['login', 'signup', 'forgot-password']
+
+// Updated auth state observer
+onAuthStateChanged(auth, async (user) => {
+  const currentRouteName = router.currentRoute.value.name
+  
+  if (!user) {
+    if (!publicRoutes.includes(currentRouteName)) {
+      router.push({ name: 'login' })
+    }
+    return
+  }
+
+  // Check if user exists in Firestore
+  const userExists = await checkUserExists(user.uid)
+  if (!userExists && !publicRoutes.includes(currentRouteName)) {
+    // User is authenticated but not in Firestore
+    auth.signOut() // Sign out the user
+    router.push({ 
+      name: 'login',
+      query: { 
+        error: 'account-not-found',
+        message: 'Please create an account first'
+      }
+    })
   }
 })
 
-router.beforeEach((to, from, next) => {
-  if (to.name === 'login' || to.name === 'signup' || to.name === 'forgot-password') {
+// Updated navigation guard
+router.beforeEach(async (to, from, next) => {
+  if (publicRoutes.includes(to.name)) {
     next()
-  } else {
-    if (auth.currentUser) {
-      next()
-    } else {
-      next({ name: 'login' })
-    }
+    return
   }
+
+  const user = auth.currentUser
+  if (!user) {
+    next({ name: 'login' })
+    return
+  }
+
+  // Check if user exists in Firestore
+  const userExists = await checkUserExists(user.uid)
+  if (!userExists) {
+    auth.signOut() // Sign out the user
+    next({ 
+      name: 'login',
+      query: { 
+        error: 'account-not-found',
+        message: 'Please create an account first'
+      }
+    })
+    return
+  }
+
+  next()
 })
 
 export default router
