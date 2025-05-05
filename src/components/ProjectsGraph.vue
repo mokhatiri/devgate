@@ -65,8 +65,20 @@
     // Count projects by status
     if (props.projects && props.projects.length) {
       props.projects.forEach(project => {
-        if (project && project.status && statusCounts.hasOwnProperty(project.status)) {
-          statusCounts[project.status]++;
+        if (project && project.status) {
+          // Normalize status by trimming and converting to standard format
+          const normalizedStatus = project.status.trim();
+          
+          if (normalizedStatus === 'Completed') {
+            statusCounts['Completed']++;
+          } else if (normalizedStatus === 'In Progress' || normalizedStatus === 'In progress' || normalizedStatus === 'InProgress') {
+            statusCounts['In Progress']++;
+          } else if (normalizedStatus === 'Pending') {
+            statusCounts['Pending']++;
+          } else {
+            // For any other status, count as Pending
+            statusCounts['Pending']++;
+          }
         } else if (project) {
           // Handle projects with undefined or missing status
           statusCounts['Pending']++;
