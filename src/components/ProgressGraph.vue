@@ -35,11 +35,11 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
-import { Chart, BarController, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js';
+import { Chart, CategoryScale, LinearScale, PointElement, LineElement, LineController, Tooltip, Legend } from 'chart.js';
 import { ActivityType } from '@/assets/js/activities';
 
 // Register Chart.js components
-Chart.register(BarController, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
+Chart.register(CategoryScale, LinearScale, PointElement, LineElement, LineController, Tooltip, Legend);
 
 const props = defineProps({
   recentActivity: {
@@ -63,14 +63,36 @@ const skillsByMonth = computed(() => {
     activity.type === ActivityType.SKILL_ADD || activity.type === ActivityType.SKILL_PROGRESS
   );
   
-  // Group by month
+  if (skillActivities.length === 0) {
+    return { labels: [], data: [], months: [] };
+  }
+  
+  // Find min and max dates to create a complete range
+  const dates = skillActivities.map(activity => new Date(activity.timestamp));
+  const minDate = new Date(Math.min(...dates));
+  const maxDate = new Date(Math.max(...dates));
+  
+  // Create all month-year combinations in the range
+  const startMonth = minDate.getMonth();
+  const startYear = minDate.getFullYear();
+  const endMonth = maxDate.getMonth();
+  const endYear = maxDate.getFullYear();
+  
+  // Initialize all months in range with zero count
+  for (let year = startYear; year <= endYear; year++) {
+    const monthStart = (year === startYear) ? startMonth : 0;
+    const monthEnd = (year === endYear) ? endMonth : 11;
+    
+    for (let month = monthStart; month <= monthEnd; month++) {
+      const monthYear = `${monthNames[month]} ${year}`;
+      months[monthYear] = 0;
+    }
+  }
+  
+  // Count activities per month
   skillActivities.forEach(activity => {
     const date = new Date(activity.timestamp);
     const monthYear = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-    
-    if (!months[monthYear]) {
-      months[monthYear] = 0;
-    }
     months[monthYear]++;
   });
   
@@ -116,13 +138,13 @@ const renderSkillsProgressChart = () => {
   const ctx = skillProgressChart.value.getContext('2d');
   const { labels, data } = skillsByMonth.value;
   
-  // Generate gradient for bars
+  // Generate gradient for the line
   const gradient = ctx.createLinearGradient(0, 0, 0, 400);
   gradient.addColorStop(0, 'rgba(100, 100, 255, 0.8)');
   gradient.addColorStop(1, 'rgba(255, 56, 184, 0.6)');
   
   chartInstance = new Chart(ctx, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels,
       datasets: [{
@@ -130,9 +152,14 @@ const renderSkillsProgressChart = () => {
         data,
         backgroundColor: gradient,
         borderColor: 'rgba(100, 100, 255, 0.8)',
-        borderWidth: 1,
-        borderRadius: 6,
-        hoverBackgroundColor: 'rgba(255, 56, 184, 0.8)'
+        borderWidth: 3,
+        pointBackgroundColor: 'rgba(255, 56, 184, 0.9)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        tension: 0.3,
+        fill: true
       }]
     },
     options: {
