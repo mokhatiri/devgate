@@ -1,5 +1,5 @@
 # devgate
-##Contributers:
+## Contributers:
   LKANIT Mohamed Taib , LAZREK Nassim , KHATIRI Mohammed
 
 ## Project setup
