@@ -43,8 +43,7 @@ const route = useRoute();
 const router = useRouter();
 
 const userId = ref(null);
-const CurrUser = ref({});
-let unsubscribeUser = null;
+let CurrUser = ref({});
 
 // Add these new refs for image preview
 const showImagePreview = ref(false);
@@ -69,11 +68,6 @@ onMounted(async () => {
         }, 500);
     }
 
-    // Cleanup previous subscription if exists
-    if (unsubscribeUser) {
-        unsubscribeUser();
-    }
-
     if(route.name === "userprofile") {
         userId.value = route.params.id;
         const accountInfo = await getAccountInfoStable(userId.value);
@@ -83,33 +77,21 @@ onMounted(async () => {
         }
     } else {
         userId.value = auth.currentUser.uid;
-        CurrUser.value = Accuser.value; // Update .value instead of reassigning
+        CurrUser = Accuser; // Update .value instead of reassigning
     }
 });
-
-// Add cleanup when component is destroyed
-onUnmounted(() => {
-    if (unsubscribeUser) {
-        unsubscribeUser();
-    }
-});
-
 // Watch for route changes to update user data
 watch(
     () => route.params.id,
     async (newId) => {
-        if (unsubscribeUser) {
-            unsubscribeUser();
-        }
-
-        if(route.name === "userprofile" && newId) {
-            userId.value = newId;
-            const accountInfo = await getAccountInfoStable(newId);
-            CurrUser.value = accountInfo.value; // Update .value instead of reassigning
-        } else {
-            userId.value = auth.currentUser.uid;
-            CurrUser.value = Accuser.value; // Update .value instead of reassigning
-        }
+          if(route.name === "userprofile" && newId) {
+              userId.value = newId;
+              const accountInfo = await getAccountInfoStable(newId);
+              CurrUser.value = accountInfo.value; // Update .value instead of reassigning
+          } else {
+              userId.value = auth.currentUser.uid;
+              CurrUser = Accuser; // Update .value instead of reassigning
+          }
     }
 );
 </script>
