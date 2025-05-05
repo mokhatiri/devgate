@@ -17,3 +17,7 @@ npm run build
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
+
+
+### Deployment link: 
+[https://devgate-5f83d.web.app/](https://devgate-5f83d.web.app/)
