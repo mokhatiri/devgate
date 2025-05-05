@@ -49,34 +49,32 @@
   
   // Project status colors
   const statusColors = {
-    'Terminé': '#ff38b8',      // accent-color (completed)
-    'En cours': '#6464ff',     // accent-secondary (in progress)
-    'En attente': '#febc2e'    // yellow (pending)
-  };
-  
-  // English translations for display
-  const statusLabels = {
-    'Terminé': 'Completed',
-    'En cours': 'In Progress',
-    'En attente': 'Pending'
+    'Completed': '#ff38b8',      // accent-color (completed)
+    'In Progress': '#6464ff',     // accent-secondary (in progress)
+    'Pending': '#febc2e'    // yellow (pending)
   };
   
   // Process project data to get status counts and percentages
   const projectStatusData = computed(() => {
     const statusCounts = {
-      'Terminé': 0,
-      'En cours': 0,
-      'En attente': 0
+      'Completed': 0,      
+      'In Progress': 0,     
+      'Pending': 0    
     };
   
     // Count projects by status
-    props.projects.forEach(project => {
-      if (statusCounts.hasOwnProperty(project.status)) {
-        statusCounts[project.status]++;
-      }
-    });
+    if (props.projects && props.projects.length) {
+      props.projects.forEach(project => {
+        if (project && project.status && statusCounts.hasOwnProperty(project.status)) {
+          statusCounts[project.status]++;
+        } else if (project) {
+          // Handle projects with undefined or missing status
+          statusCounts['Pending']++;
+        }
+      });
+    }
   
-    const total = props.projects.length || 1; // Avoid division by zero
+    const total = Object.values(statusCounts).reduce((sum, count) => sum + count, 0) || 1; // Avoid division by zero
     
     // Prepare data for chart
     const labels = Object.keys(statusCounts);
@@ -95,7 +93,7 @@
   // Legend items with percentages
   const statusLegendItems = computed(() => {
     return projectStatusData.value.labels.map((label, index) => ({
-      label: statusLabels[label],
+      label: label,
       color: projectStatusData.value.colors[index],
       percentage: projectStatusData.value.percentages[index]
     }));
@@ -115,7 +113,7 @@
     chartInstance = new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: labels.map(label => statusLabels[label]),
+        labels: labels,
         datasets: [{
           data,
           backgroundColor: colors,

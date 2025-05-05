@@ -6,10 +6,10 @@
 
 
 <script setup>
-import { ref, onMounted, computed, watch, defineProps } from 'vue';
+import { defineProps } from 'vue';
 import ProjectsGraph from './ProjectsGraph.vue'
 
-defineProps({
+const props = defineProps({
   projects: {
     type: Array,
     required: true
