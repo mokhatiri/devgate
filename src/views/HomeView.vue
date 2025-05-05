@@ -28,7 +28,7 @@
 </template>
   
 <script setup>
-import { onMounted, ref, onUnmounted, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getAccountInfoStable } from '@/Functions';
 import {CurrUser as Accuser, auth} from '@/firebase';
