@@ -8,6 +8,11 @@
         <SkillsGraph :skills="skills" />
       </div>
     </div>
+    <div class="row mt-4">
+      <div class="col-12">
+        <ProgressGraph :recentActivity="recentActivity" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -15,6 +20,7 @@
 import { defineProps } from 'vue';
 import ProjectsGraph from './ProjectsGraph.vue';
 import SkillsGraph from './SkillsGraph.vue';
+import ProgressGraph from './ProgressGraph.vue';
 
 defineProps({
   projects: {
@@ -51,6 +57,10 @@ defineProps({
   padding-right: 15px;
   padding-left: 15px;
   margin-bottom: 30px;
+}
+
+.mt-4 {
+  margin-top: 2rem;
 }
 
 @media (min-width: 768px) {
