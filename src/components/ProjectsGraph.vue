@@ -6,7 +6,6 @@
           <span class="dot dot-yellow"></span>
           <span class="dot dot-green"></span>
         </div>
-        <h2 class="window-title">Stats</h2>
         <div class="header-spacer"></div>
       </div>
       
@@ -65,8 +64,20 @@
     // Count projects by status
     if (props.projects && props.projects.length) {
       props.projects.forEach(project => {
-        if (project && project.status && statusCounts.hasOwnProperty(project.status)) {
-          statusCounts[project.status]++;
+        if (project && project.status) {
+          // Normalize status by trimming and converting to standard format
+          const normalizedStatus = project.status.trim();
+          
+          if (normalizedStatus === 'Completed') {
+            statusCounts['Completed']++;
+          } else if (normalizedStatus === 'In Progress' || normalizedStatus === 'In progress' || normalizedStatus === 'InProgress') {
+            statusCounts['In Progress']++;
+          } else if (normalizedStatus === 'Pending') {
+            statusCounts['Pending']++;
+          } else {
+            // For any other status, count as Pending
+            statusCounts['Pending']++;
+          }
         } else if (project) {
           // Handle projects with undefined or missing status
           statusCounts['Pending']++;
@@ -213,17 +224,8 @@
     box-shadow: 0 0 0 1px #24b33c;
   }
   
-  .window-title {
-    flex: 1;
-    text-align: center;
-    margin: 0;
-    font-size: 1.3rem;
-    font-weight: 600;
-    background: linear-gradient(45deg, var(--accent-color), var(--accent-secondary));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  }
+ 
+
   
   .header-spacer {
     width: 42px; /* To balance the window dots */
@@ -349,9 +351,7 @@
   }
   
   @media (max-width: 768px) {
-    .window-title {
-      font-size: 1.2rem;
-    }
+    
     
     .chart-container {
       padding: 1.2rem;

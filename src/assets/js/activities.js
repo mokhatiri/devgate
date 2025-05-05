@@ -156,6 +156,26 @@ const trackProjectStatusChange = async (project, oldStatus) => {
 };
 
 // Track skill addition
+
+
+/*const trackSkillAddition = async (skill) => {
+  const futureDate = new Date();
+  futureDate.setMonth(futureDate.getMonth() + 2);
+
+  const activity = {
+    type: ActivityType.SKILL_ADD,
+    description: `Nouvelle compétence ajoutée: ${skill.name} de niveau ${skill.level}`,
+    progress: skill.percentage,
+    timestamp: futureDate.toISOString(),
+  };
+  await updateUserSection(
+    CurrUser.value.uid,
+    "recentActivity",
+    activity,
+    "add"
+  );
+};
+*/ 
 const trackSkillAddition = async (skill) => {
   const activity = {
     type: ActivityType.SKILL_ADD,
